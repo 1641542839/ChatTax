@@ -38,7 +38,14 @@ pip install -r requirements.txt
 ```
 
 ### 4. Create Data Directories
+**On Linux/macOS:**
 ```bash
 mkdir -p data/raw data/raw_files data/parsed data/tables data/faiss_index
 touch data/chunks.jsonl
+```
+
+**On Windows:**
+```bash
+mkdir data\raw data\raw_files data\parsed data\tables data\faiss_index 2>nul
+type nul > data\chunks.jsonl
 ```
