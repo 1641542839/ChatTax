@@ -9,7 +9,6 @@ import hashlib
 import json
 import os
 import random
-import re
 import time
 from datetime import datetime
 from pathlib import Path
@@ -105,7 +104,7 @@ class Crawler:
                 
                 return response, response.content
                 
-            except (requests.RequestException, Exception) as e:
+            except Exception as e:
                 self.log(f"Attempt {attempt + 1}/3 failed for {url}: {e}", verbose_only=True)
                 if attempt < 2:  # Don't sleep after last attempt
                     time.sleep(2 ** attempt)  # Exponential backoff

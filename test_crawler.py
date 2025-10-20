@@ -85,26 +85,31 @@ def test_read_seeds():
     
     # Create a temporary seeds file
     import tempfile
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
-        f.write("# Comment line\n")
-        f.write("http://example.com/\n")
-        f.write("\n")  # Empty line
-        f.write("http://test.com/\n")
-        temp_file = f.name
-    
-    seeds = read_seeds(temp_file)
-    print(f"  Found {len(seeds)} seeds")
-    for seed in seeds:
-        print(f"    - {seed}")
-    
-    assert len(seeds) == 2, "Should find 2 seeds"
-    assert "http://example.com/" in seeds, "Should contain example.com"
-    assert "http://test.com/" in seeds, "Should contain test.com"
-    
     import os
-    os.unlink(temp_file)
     
-    print("  ✓ read_seeds test passed\n")
+    temp_file = None
+    try:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+            f.write("# Comment line\n")
+            f.write("http://example.com/\n")
+            f.write("\n")  # Empty line
+            f.write("http://test.com/\n")
+            temp_file = f.name
+        
+        seeds = read_seeds(temp_file)
+        print(f"  Found {len(seeds)} seeds")
+        for seed in seeds:
+            print(f"    - {seed}")
+        
+        assert len(seeds) == 2, "Should find 2 seeds"
+        assert "http://example.com/" in seeds, "Should contain example.com"
+        assert "http://test.com/" in seeds, "Should contain test.com"
+        
+        print("  ✓ read_seeds test passed\n")
+    finally:
+        # Clean up temporary file
+        if temp_file and os.path.exists(temp_file):
+            os.unlink(temp_file)
 
 if __name__ == '__main__':
     print("=" * 60)
