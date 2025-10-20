@@ -228,8 +228,8 @@ class Crawler:
             self.log(f"Saved: {save_path} ({len(content)} bytes)", verbose_only=True)
             return str(save_path)
             
-        except (IOError, OSError, json.JSONDecodeError) as e:
-            # Handle file I/O errors and JSON encoding issues
+        except (IOError, OSError, TypeError) as e:
+            # Handle file I/O errors and JSON serialization issues
             self.log(f"Error saving {url}: {e}")
             return None
             
