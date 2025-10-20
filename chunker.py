@@ -16,7 +16,12 @@ class DocumentChunker:
     def __init__(self, input_dir="./data/parsed", output_file="./data/chunks.jsonl"):
         self.input_dir = input_dir
         self.output_file = output_file
-        self.tokenizer = tiktoken.get_encoding("cl100k_base")  # OpenAI encoding
+        try:
+            self.tokenizer = tiktoken.get_encoding("cl100k_base")  # OpenAI encoding
+        except Exception as e:
+            print(f"Warning: Could not load tiktoken encoding: {str(e)}")
+            print("Using fallback word-based tokenization")
+            self.tokenizer = None
         
     def count_tokens(self, text):
         """
@@ -28,7 +33,11 @@ class DocumentChunker:
         Returns:
             Number of tokens
         """
-        return len(self.tokenizer.encode(text))
+        if self.tokenizer:
+            return len(self.tokenizer.encode(text))
+        else:
+            # Fallback: approximate tokens as words * 1.3
+            return int(len(text.split()) * 1.3)
     
     def chunk_by_tokens(self, text, chunk_size=512, overlap=50):
         """
@@ -42,24 +51,42 @@ class DocumentChunker:
         Returns:
             List of text chunks
         """
-        tokens = self.tokenizer.encode(text)
-        chunks = []
-        
-        start = 0
-        while start < len(tokens):
-            end = start + chunk_size
-            chunk_tokens = tokens[start:end]
-            chunk_text = self.tokenizer.decode(chunk_tokens)
-            chunks.append(chunk_text)
+        if self.tokenizer:
+            tokens = self.tokenizer.encode(text)
+            chunks = []
             
-            # Move start position with overlap
-            start = end - overlap
+            start = 0
+            while start < len(tokens):
+                end = start + chunk_size
+                chunk_tokens = tokens[start:end]
+                chunk_text = self.tokenizer.decode(chunk_tokens)
+                chunks.append(chunk_text)
+                
+                # Move start position with overlap
+                start = end - overlap
+                
+                # Prevent infinite loop
+                if start >= len(tokens) or end >= len(tokens):
+                    break
             
-            # Prevent infinite loop
-            if start >= len(tokens) or end >= len(tokens):
-                break
-        
-        return chunks
+            return chunks
+        else:
+            # Fallback: chunk by words
+            words = text.split()
+            word_chunk_size = int(chunk_size / 1.3)
+            word_overlap = int(overlap / 1.3)
+            chunks = []
+            
+            start = 0
+            while start < len(words):
+                end = start + word_chunk_size
+                chunk_words = words[start:end]
+                chunks.append(' '.join(chunk_words))
+                start = end - word_overlap
+                if start >= len(words) or end >= len(words):
+                    break
+            
+            return chunks
     
     def chunk_by_paragraphs(self, text, max_chunk_size=512, overlap=50):
         """

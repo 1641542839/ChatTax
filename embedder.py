@@ -5,11 +5,21 @@ Supports both OpenAI embeddings and sentence transformers.
 
 import os
 import json
-import numpy as np
-import faiss
 from pathlib import Path
 from tqdm import tqdm
 import pickle
+
+try:
+    import numpy as np
+except ImportError:
+    print("Warning: numpy not installed. Install with: pip install numpy")
+    np = None
+
+try:
+    import faiss
+except ImportError:
+    print("Warning: faiss not installed. Install with: pip install faiss-cpu")
+    faiss = None
 
 
 class DocumentEmbedder:
@@ -156,6 +166,11 @@ class DocumentEmbedder:
     
     def build_index(self):
         """Build FAISS index from chunks."""
+        if not np or not faiss:
+            print("Error: numpy and faiss are required to build index")
+            print("Install with: pip install numpy faiss-cpu")
+            return
+        
         # Load chunks
         chunks = self.load_chunks()
         
