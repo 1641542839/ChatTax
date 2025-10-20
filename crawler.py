@@ -68,7 +68,8 @@ class Crawler:
                 parser.read()
                 self.robots_parsers[base_url] = parser
                 self.log(f"Loaded robots.txt from {robots_url}", verbose_only=True)
-            except Exception as e:
+            except (IOError, OSError, ValueError) as e:
+                # Handle network errors, file errors, and parsing errors
                 self.log(f"Could not load robots.txt from {robots_url}: {e}", verbose_only=True)
                 # Create permissive parser if robots.txt fails
                 self.robots_parsers[base_url] = None
@@ -134,7 +135,8 @@ class Crawler:
                         
             return links
             
-        except Exception as e:
+        except (AttributeError, ValueError, TypeError) as e:
+            # Handle HTML parsing errors and attribute access issues
             self.log(f"Error parsing links from {base_url}: {e}", verbose_only=True)
             return set()
             
@@ -226,7 +228,8 @@ class Crawler:
             self.log(f"Saved: {save_path} ({len(content)} bytes)", verbose_only=True)
             return str(save_path)
             
-        except Exception as e:
+        except (IOError, OSError, json.JSONDecodeError) as e:
+            # Handle file I/O errors and JSON encoding issues
             self.log(f"Error saving {url}: {e}")
             return None
             
