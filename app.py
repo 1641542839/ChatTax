@@ -4,11 +4,16 @@ Main application with Flask API and query interface.
 """
 
 import os
+import logging
 from flask import Flask, request, jsonify, render_template_string
 from flask_cors import CORS
 from embedder import DocumentEmbedder
 from dotenv import load_dotenv
 import json
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
@@ -255,7 +260,8 @@ def search():
         })
         
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"Search error: {str(e)}", exc_info=True)
+        return jsonify({'error': 'An error occurred while processing your search request'}), 500
 
 
 @app.route('/pipeline/run', methods=['POST'])
@@ -292,7 +298,8 @@ def run_pipeline():
         })
         
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"Pipeline error: {str(e)}", exc_info=True)
+        return jsonify({'error': 'An error occurred while running the pipeline'}), 500
 
 
 @app.route('/stats')
@@ -324,7 +331,8 @@ def stats():
         })
         
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"Stats error: {str(e)}", exc_info=True)
+        return jsonify({'error': 'An error occurred while retrieving statistics'}), 500
 
 
 def main():
