@@ -1,153 +1,55 @@
 'use client'
 
-import { useState } from 'react'
-import {
-  Card,
-  Typography,
-  Checkbox,
-  Button,
-  Progress,
-  Space,
-  Tag,
-  Divider,
-} from 'antd'
-import {
-  CheckCircleOutlined,
-  ClockCircleOutlined,
-  FileTextOutlined,
-} from '@ant-design/icons'
+import { useEffect } from 'react'
+import { useChecklistStore } from '@/store/checklistStore'
+import TaskCard from '@/components/checklist/TaskCard'
+import ChecklistToolbar from '@/components/checklist/ChecklistToolbar'
+import { Card, Typography, Progress, Empty, Space } from 'antd'
+import { CheckCircleOutlined } from '@ant-design/icons'
 
 const { Title, Paragraph, Text } = Typography
 
-interface ChecklistItem {
-  id: string
-  title: string
-  description: string
-  completed: boolean
-  category: string
-  priority: 'high' | 'medium' | 'low'
-}
-
-const initialChecklist: ChecklistItem[] = [
-  {
-    id: '1',
-    title: 'Gather W-2 Forms',
-    description: 'Collect all W-2 forms from your employers for the tax year',
-    completed: false,
-    category: 'Documents',
-    priority: 'high',
-  },
-  {
-    id: '2',
-    title: 'Collect 1099 Forms',
-    description: 'Gather all 1099 forms (1099-INT, 1099-DIV, 1099-MISC, etc.)',
-    completed: false,
-    category: 'Documents',
-    priority: 'high',
-  },
-  {
-    id: '3',
-    title: 'Review Deductible Expenses',
-    description:
-      'Compile receipts for deductible expenses (medical, charitable, business)',
-    completed: false,
-    category: 'Deductions',
-    priority: 'medium',
-  },
-  {
-    id: '4',
-    title: 'Mortgage Interest Statement',
-    description: 'Obtain Form 1098 for mortgage interest paid',
-    completed: false,
-    category: 'Documents',
-    priority: 'medium',
-  },
-  {
-    id: '5',
-    title: 'Student Loan Interest',
-    description: 'Get Form 1098-E for student loan interest paid',
-    completed: false,
-    category: 'Documents',
-    priority: 'low',
-  },
-  {
-    id: '6',
-    title: 'Healthcare Coverage',
-    description: 'Verify Form 1095-A, B, or C for healthcare coverage',
-    completed: false,
-    category: 'Healthcare',
-    priority: 'medium',
-  },
-  {
-    id: '7',
-    title: 'IRA Contributions',
-    description: 'Document all IRA and retirement account contributions',
-    completed: false,
-    category: 'Retirement',
-    priority: 'medium',
-  },
-  {
-    id: '8',
-    title: 'Review Tax Credits',
-    description:
-      'Check eligibility for tax credits (child care, education, energy)',
-    completed: false,
-    category: 'Credits',
-    priority: 'high',
-  },
-]
-
 export default function ChecklistPage() {
-  const [checklist, setChecklist] = useState<ChecklistItem[]>(initialChecklist)
+  const { getFilteredTasks, tasks, initializeDefaultTasks } =
+    useChecklistStore()
 
-  const handleToggle = (id: string) => {
-    setChecklist((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, completed: !item.completed } : item
-      )
-    )
-  }
+  // Initialize default tasks on mount
+  useEffect(() => {
+    initializeDefaultTasks()
+  }, [initializeDefaultTasks])
 
-  const completedCount = checklist.filter((item) => item.completed).length
-  const progress = Math.round((completedCount / checklist.length) * 100)
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high':
-        return 'red'
-      case 'medium':
-        return 'orange'
-      case 'low':
-        return 'blue'
-      default:
-        return 'default'
-    }
-  }
+  const filteredTasks = getFilteredTasks()
+  const completedCount = tasks.filter((task) => task.status === 'done').length
+  const totalCount = tasks.length
+  const progress =
+    totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8">
-      <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
-        <Card className="shadow-xl">
-          <div className="mb-6">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <Card className="mb-6 shadow-lg">
+          <div className="mb-4">
             <Title level={2} className="mb-2">
               ✅ Tax Preparation Checklist
             </Title>
             <Paragraph className="text-gray-600">
               Track your tax preparation progress and ensure you have all
-              necessary documents
+              necessary documents and information
             </Paragraph>
           </div>
 
-          <Divider />
-
           {/* Progress Section */}
-          <div className="mb-8 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 p-6">
+          <div className="rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 p-6">
             <div className="mb-4 flex items-center justify-between">
-              <Text strong className="text-lg">
-                Overall Progress
-              </Text>
+              <div className="flex items-center gap-2">
+                <CheckCircleOutlined className="text-2xl text-primary-600" />
+                <Text strong className="text-lg">
+                  Overall Progress
+                </Text>
+              </div>
               <Text className="text-2xl font-bold text-primary-600">
-                {completedCount} / {checklist.length}
+                {completedCount} / {totalCount}
               </Text>
             </div>
             <Progress
@@ -157,79 +59,48 @@ export default function ChecklistPage() {
                 '100%': '#87d068',
               }}
               status={progress === 100 ? 'success' : 'active'}
+              strokeWidth={12}
             />
+            <div className="mt-3 flex justify-between text-sm text-gray-600">
+              <span>{progress}% Complete</span>
+              <span>{totalCount - completedCount} tasks remaining</span>
+            </div>
           </div>
+        </Card>
 
-          {/* Checklist Items */}
-          <Space direction="vertical" size="middle" className="w-full">
-            {checklist.map((item) => (
-              <Card
-                key={item.id}
-                size="small"
-                className={`transition-all hover:shadow-md ${
-                  item.completed ? 'bg-green-50' : 'bg-white'
-                }`}
-              >
-                <div className="flex items-start gap-4">
-                  <Checkbox
-                    checked={item.completed}
-                    onChange={() => handleToggle(item.id)}
-                    className="mt-1"
-                  />
-                  <div className="flex-1">
-                    <div className="mb-2 flex items-center gap-2">
-                      <Text
-                        strong
-                        delete={item.completed}
-                        className={`text-base ${
-                          item.completed ? 'text-gray-400' : 'text-gray-900'
-                        }`}
-                      >
-                        {item.title}
-                      </Text>
-                      <Tag color={getPriorityColor(item.priority)}>
-                        {item.priority}
-                      </Tag>
-                      {item.completed && (
-                        <CheckCircleOutlined className="text-green-500" />
-                      )}
-                      {!item.completed && (
-                        <ClockCircleOutlined className="text-orange-500" />
-                      )}
-                    </div>
-                    <Paragraph
-                      className={`mb-2 ${
-                        item.completed ? 'text-gray-400' : 'text-gray-600'
-                      }`}
-                    >
-                      {item.description}
-                    </Paragraph>
-                    <Tag icon={<FileTextOutlined />} color="blue">
-                      {item.category}
-                    </Tag>
-                  </div>
+        {/* Toolbar */}
+        <ChecklistToolbar />
+
+        {/* Task List */}
+        {filteredTasks.length === 0 ? (
+          <Card className="shadow-lg">
+            <Empty
+              description={
+                <div className="text-center">
+                  <Text className="text-lg text-gray-600">
+                    No tasks found with the current filter
+                  </Text>
                 </div>
-              </Card>
+              }
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+            />
+          </Card>
+        ) : (
+          <Space direction="vertical" size="middle" className="w-full">
+            {filteredTasks.map((task) => (
+              <TaskCard key={task.id} task={task} />
             ))}
           </Space>
+        )}
 
-          <Divider />
-
-          {/* Action Buttons */}
-          <div className="flex justify-between">
-            <Button
-              type="default"
-              onClick={() => setChecklist(initialChecklist)}
-            >
-              Reset All
-            </Button>
-            <Button
-              type="primary"
-              disabled={progress !== 100}
-              onClick={() => alert('Ready to file! 🎉')}
-            >
-              {progress === 100 ? 'Ready to File!' : 'Complete All Items'}
-            </Button>
+        {/* Footer Info */}
+        <Card className="mt-6 bg-blue-50 shadow-lg">
+          <div className="text-center">
+            <Text className="text-sm text-gray-600">
+              💡 <strong>Tip:</strong> Use the filters above to focus on
+              specific task statuses. Export to PDF or share your progress with
+              your tax advisor.
+            </Text>
           </div>
         </Card>
       </div>
