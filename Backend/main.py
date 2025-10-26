@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 
 from app.core.config import settings
 from app.db.database import Base, engine
-from app.api.routers import auth, chat
+from app.api.routers import auth, chat, query
 
 
 @asynccontextmanager
@@ -39,6 +39,7 @@ app.add_middleware(
 # Include routers
 app.include_router(auth.router, prefix="/api")
 app.include_router(chat.router, prefix="/api")
+app.include_router(query.router, prefix="/api")
 
 
 @app.get("/")
