@@ -6,6 +6,9 @@ FastAPI backend for ChatTax - an AI-powered tax assistant application.
 
 - **JWT Authentication**: Secure user authentication with access and refresh tokens
 - **SSE Streaming**: Real-time chat responses using Server-Sent Events
+- **RAG (Retrieval-Augmented Generation)**: AI-powered tax question answering with citations
+- **FAISS Vector Database**: Fast similarity search using pre-crawled tax documents
+- **Real Tax Document Data**: Metadata includes source URLs, crawl dates, and provenance
 - **Modular Architecture**: Clean separation of concerns (routers, models, schemas, services)
 - **SQLAlchemy ORM**: Database management with support for SQLite, PostgreSQL, MySQL
 - **CORS Enabled**: Configured for Next.js frontend integration
@@ -18,22 +21,27 @@ Backend/
 │   ├── api/
 │   │   └── routers/
 │   │       ├── auth.py          # Authentication endpoints
-│   │       └── chat.py          # Chat streaming endpoints
+│   │       ├── chat.py          # Chat streaming endpoints
+│   │       └── query.py         # RAG query endpoints
 │   ├── core/
 │   │   ├── config.py            # Application configuration
 │   │   └── security.py          # JWT and password utilities
 │   ├── db/
-│   │   └── database.py          # Database setup and session management
+│   │   ├── database.py          # Database setup and session management
+│   │   └── faiss_index/         # FAISS vector database index
 │   ├── models/
 │   │   └── user.py              # SQLAlchemy User model
 │   ├── schemas/
 │   │   └── schemas.py           # Pydantic validation schemas
 │   └── services/
 │       ├── auth_service.py      # Authentication business logic
-│       └── chat_service.py      # Chat business logic
+│       ├── chat_service.py      # Chat business logic
+│       ├── vector_store_service.py  # FAISS vector store management
+│       └── llm_service.py       # OpenAI LLM integration
 ├── main.py                      # FastAPI application entry point
 ├── requirements.txt             # Python dependencies
-└── .env.example                 # Environment variables template
+├── README.md                    # This file
+└── RAG_TESTING.md              # RAG endpoint testing guide
 
 ## Installation
 
@@ -66,13 +74,24 @@ pip install -r requirements.txt
 Copy-Item .env.example .env
 
 # Edit .env file with your configuration
-# IMPORTANT: Change SECRET_KEY in production!
+# IMPORTANT: 
+# 1. Change SECRET_KEY in production!
+# 2. Add your OpenAI API key for RAG features
 ```
+
+**Required Environment Variables**:
+- `SECRET_KEY`: JWT secret key (generate a secure random string)
+- `OPENAI_API_KEY`: OpenAI API key from https://platform.openai.com/api-keys
 
 ### 4. Database Initialization
 
 ```powershell
-# The database will be created automatically on first run
+# The FAISS index and metadata are pre-loaded from crawled data
+# Located in: app/db/faiss_index/
+#   - index.faiss: Vector embeddings
+#   - metadata.parquet: Document metadata with URLs, dates, provenance
+
+# User database will be created automatically on first run
 # By default, uses SQLite (chattax.db)
 
 # For PostgreSQL or MySQL, update DATABASE_URL in .env
@@ -124,6 +143,35 @@ The API will be available at:
     "content": "What are the tax deductions for 2024?"
   }
   ```
+
+### Query (RAG)
+
+- **POST** `/api/chat/query` - Answer tax questions with citations
+  ```json
+  {
+    "question": "What is the standard deduction for 2024?",
+    "user_type": "individual",
+    "top_k": 3
+  }
+  ```
+  
+  Response includes:
+  - `answer`: AI-generated answer with citations [Source 1], [Source 2]
+  - `sources`: List of source documents with:
+    - `chunk_id`: Unique chunk identifier
+    - `doc_id`: Document ID
+    - `source_url`: Original IRS/tax authority URL
+    - `section_heading`: Section name from source
+    - `text`: Relevant text excerpt
+    - `crawl_date`: When document was crawled
+    - `last_updated_on_page`: Last update date from source
+    - `is_table_summary`: Boolean for table summaries
+    - `provenance`: Data source information
+    - `relevance_score`: 0-1 similarity score
+  - `confidence`: Overall confidence score (0-1)
+  - `timestamp`: Response timestamp
+
+- **GET** `/api/chat/stats` - Get vector store statistics
 
 ## Next.js Integration
 

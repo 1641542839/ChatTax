@@ -1,12 +1,15 @@
 import { create } from 'zustand'
 import { nanoid } from 'nanoid'
 
+export type MessageStatus = 'thinking' | 'retrieving' | 'generating' | 'done'
+
 export interface Message {
   id: string
   role: 'user' | 'assistant'
   content: string
   timestamp: Date
   isStreaming?: boolean
+  status?: MessageStatus
 }
 
 export interface Conversation {
@@ -35,6 +38,11 @@ interface ChatState {
     conversationId: string,
     messageId: string,
     chunk: string
+  ) => void
+  setMessageStatus: (
+    conversationId: string,
+    messageId: string,
+    status: MessageStatus
   ) => void
   setMessageStreaming: (
     conversationId: string,
@@ -138,6 +146,27 @@ export const useChatStore = create<ChatState>((set, get) => ({
               msg.id === messageId
                 ? { ...msg, content: msg.content + chunk }
                 : msg
+            ),
+            updatedAt: new Date(),
+          }
+        }
+        return conv
+      }),
+    }))
+  },
+
+  setMessageStatus: (
+    conversationId: string,
+    messageId: string,
+    status: MessageStatus
+  ) => {
+    set((state) => ({
+      conversations: state.conversations.map((conv) => {
+        if (conv.id === conversationId) {
+          return {
+            ...conv,
+            messages: conv.messages.map((msg) =>
+              msg.id === messageId ? { ...msg, status } : msg
             ),
             updatedAt: new Date(),
           }
