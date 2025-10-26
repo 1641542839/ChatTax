@@ -1,51 +1,26 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
+# Root level ignore patterns
+# Only for files/folders at ChatTax root level
 
-# Dependencies
-node_modules/
-.pnp
-.pnp.js
-
-# Testing
-coverage/
-.nyc_output
-
-# Next.js
-.next/
-out/
-dist/
-build/
-
-# Production
-/build
-
-# Misc
+# OS files
 .DS_Store
-*.pem
+Thumbs.db
 
-# Debug
+# IDE/Editor files (if shared across projects)
 .vscode/
 .idea/
 
-# Local env files
+# Temporary files
+*.tmp
+*.bak
+*.swp
+
+# Documentation build output
+/docs/build/
+
+# Any root-level secrets
 .env
-.env*.local
-.env.development.local
-.env.test.local
-.env.production.local
+*.pem
+*.key
 
-# Vercel
-.vercel
-
-# Typescript
-*.tsbuildinfo
-next-env.d.ts
-
-# Husky
-.husky/_
+# Note: Frontend and Backend have their own .gitignore files
+# This file only affects the root level
