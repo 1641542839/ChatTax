@@ -1,11 +1,12 @@
 """
 LLM service for generating answers using OpenAI with crawled tax document data.
 """
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, AsyncGenerator
+import json
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from app.core.config import settings
-from app.schemas.schemas import DocumentSource
+from app.schemas.schemas import DocumentSource, ChecklistIdentityInfo
 
 
 class LLMService:
@@ -23,27 +24,24 @@ class LLMService:
         # Create prompt template for tax Q&A
         self.prompt_template = ChatPromptTemplate.from_messages([
             ("system", """You are a professional tax advisor AI assistant specializing in Australian tax law and regulations from the Australian Taxation Office (ATO). 
-Your role is to provide accurate, clear, and helpful answers to Australian tax-related questions.
+Your role is to provide accurate, clear, and helpful answers to Australian PERSONAL tax-related questions for INDIVIDUAL taxpayers only.
 
 Guidelines:
 1. Base your answers ONLY on the provided source documents from the ATO
-2. All information pertains to AUSTRALIAN tax law, NOT U.S. or other countries
+2. All information pertains to AUSTRALIAN tax law for INDIVIDUAL PERSONAL taxpayers, NOT U.S. or other countries, NOT business tax
 3. DO NOT include any [Source X] citations or links in your answer text
 4. DO NOT add URLs or hyperlinks in your answer
 5. Write your answer in a natural, conversational style without reference markers
 6. If information is not in the sources, clearly state that
-7. Use clear, simple language appropriate for the user type
-8. Include relevant dates, amounts, and limitations specific to Australian tax system
+7. Use clear, simple language appropriate for personal Australian taxpayers
+8. Include relevant dates, amounts, and limitations specific to Australian individual tax system
 9. Mention if professional consultation is recommended for complex cases
-10. Use Australian terminology (e.g., "tax return" not "tax filing", "ATO" not "IRS")
+10. Use Australian terminology (e.g., "tax return" not "tax filing", "ATO" not "IRS", "myGov" not "online account")
 11. Reference Australian financial years (e.g., 2023-24) when relevant
 
-User Type: {user_type}
-- individual: Use simple, practical language for personal Australian taxpayers
-- business: Include business-specific considerations and Australian business regulations
-- professional: Provide detailed technical information for Australian tax professionals
-
 CRITICAL: 
+- This system is ONLY for INDIVIDUAL PERSONAL tax returns
+- Do NOT provide business tax advice
 - Only use information from the SOURCE DOCUMENTS provided below
 - Do NOT include [Source 1], [Source 2] or any citation markers in your answer
 - Do NOT include any URLs or links in your answer text
@@ -87,15 +85,17 @@ Remember: The sources will be listed separately after your answer, so do not inc
         self,
         question: str,
         retrieved_docs: List[Dict],
-        user_type: str = "individual"
+        user_type: str = "individual"  # Kept for backward compatibility, always individual
     ):
         """
         Generate answer using LLM with streaming for real-time response.
         
+        This system only supports INDIVIDUAL PERSONAL taxpayers.
+        
         Args:
             question: User's question
             retrieved_docs: List of document dictionaries with metadata and scores
-            user_type: Type of user (individual, business, professional)
+            user_type: Deprecated - always "individual" (for personal Australian taxpayers only)
             
         Yields:
             str: Chunks of the generated answer
@@ -107,11 +107,10 @@ Remember: The sources will be listed separately after your answer, so do not inc
         # Format context from retrieved documents
         context = self._format_context(retrieved_docs)
         
-        # Generate prompt
+        # Generate prompt (user_type is now ignored, always individual)
         messages = self.prompt_template.format_messages(
             question=question,
-            context=context,
-            user_type=user_type
+            context=context
         )
         
         # Stream LLM response directly
@@ -123,15 +122,17 @@ Remember: The sources will be listed separately after your answer, so do not inc
         self,
         question: str,
         retrieved_docs: List[Dict],
-        user_type: str = "individual"
+        user_type: str = "individual"  # Kept for backward compatibility, always individual
     ) -> Tuple[str, List[DocumentSource], float]:
         """
         Generate answer using LLM with retrieved documents from FAISS.
         
+        This system only supports INDIVIDUAL PERSONAL taxpayers.
+        
         Args:
             question: User's question
             retrieved_docs: List of document dictionaries with metadata and scores
-            user_type: Type of user (individual, business, professional)
+            user_type: Deprecated - always "individual" (for personal Australian taxpayers only)
             
         Returns:
             Tuple of (answer, sources, confidence_score)
@@ -146,11 +147,10 @@ Remember: The sources will be listed separately after your answer, so do not inc
         # Format context from retrieved documents
         context = self._format_context(retrieved_docs)
         
-        # Generate prompt
+        # Generate prompt (user_type is now ignored, always individual)
         messages = self.prompt_template.format_messages(
             question=question,
-            context=context,
-            user_type=user_type
+            context=context
         )
         
         # Get LLM response
@@ -269,6 +269,172 @@ Remember: The sources will be listed separately after your answer, so do not inc
         confidence = min(avg_similarity * doc_count_factor * top_score_boost, 1.0)
         
         return round(confidence, 3)
+    
+    async def generate_tax_checklist(self, identity_info: ChecklistIdentityInfo) -> List[Dict]:
+        """
+        Generate a personalized tax checklist based on user's identity information.
+        
+        Follows Single Responsibility Principle - only handles LLM interaction for checklist generation.
+        
+        Args:
+            identity_info: User's identity and tax situation information
+            
+        Returns:
+            List of checklist items as dictionaries
+        """
+        # Create a prompt for checklist generation
+        checklist_prompt = ChatPromptTemplate.from_messages([
+            ("system", """You are an expert Australian tax advisor who helps INDIVIDUAL PERSONAL taxpayers prepare their tax returns.
+Your task is to generate a personalized, actionable checklist for preparing an Australian PERSONAL tax return.
+
+IMPORTANT: This is ONLY for INDIVIDUAL taxpayers, NOT businesses or companies.
+
+The checklist should:
+1. Be tailored to the user's specific situation (employment, income sources, dependents, etc.)
+2. Include only relevant items based on their identity information
+3. Be organized by priority (high, medium, low)
+4. Have clear, actionable titles and descriptions
+5. Use Australian tax terminology and regulations (ATO, myGov, Payment Summary, etc.)
+6. Include estimated time for each task
+7. Cover these categories: documents, deductions, forms, deadlines, record_keeping
+
+Return ONLY a valid JSON array of checklist items with this exact structure:
+[
+  {{
+    "id": "unique_id",
+    "title": "Short actionable title",
+    "description": "Detailed description of what to do and why",
+    "category": "documents|deductions|forms|deadlines|record_keeping",
+    "priority": "high|medium|low",
+    "status": "todo",
+    "estimated_time": "X minutes|hours"
+  }}
+]
+
+Important:
+- Generate DYNAMIC number of items based on complexity:
+  * Simple situation (employed, no investments): 5-8 items
+  * Moderate situation (multiple income sources OR dependents): 8-12 items
+  * Complex situation (multiple income sources AND investments AND rental): 12-15 items
+- Use unique IDs like "doc_001", "ded_001", etc.
+- All items should start with status "todo"
+- Be specific to Australian PERSONAL tax law and ATO requirements
+- Consider the financial year 2023-24
+- Focus on INDIVIDUAL taxpayer tasks (no business tax, no company returns)
+- Do NOT include any text before or after the JSON array"""),
+            ("user", """Generate a personalized Australian PERSONAL tax return checklist for an INDIVIDUAL taxpayer with this profile:
+
+Employment Status: {employment_status}
+Income Sources: {income_sources}
+Has Dependents: {has_dependents}
+Has Investments: {has_investment}
+Has Rental Property: {has_rental_property}
+First Time Filer: {is_first_time_filer}
+Additional Context: {additional_info}
+
+Generate a checklist with the appropriate number of items based on complexity.
+Return the checklist as a JSON array.""")
+        ])
+        
+        # Format the prompt
+        messages = checklist_prompt.format_messages(
+            employment_status=identity_info.employment_status,
+            income_sources=", ".join(identity_info.income_sources),
+            has_dependents="Yes" if identity_info.has_dependents else "No",
+            has_investment="Yes" if identity_info.has_investment else "No",
+            has_rental_property="Yes" if identity_info.has_rental_property else "No",
+            is_first_time_filer="Yes" if identity_info.is_first_time_filer else "No",
+            additional_info=str(identity_info.additional_info) if identity_info.additional_info else "None"
+        )
+        
+        # Generate checklist
+        response = await self.llm.ainvoke(messages)
+        checklist_text = response.content.strip()
+        
+        # Parse JSON response
+        try:
+            # Remove any markdown code blocks if present
+            if checklist_text.startswith("```"):
+                checklist_text = checklist_text.split("```")[1]
+                if checklist_text.startswith("json"):
+                    checklist_text = checklist_text[4:]
+            
+            checklist_items = json.loads(checklist_text)
+            
+            # Validate structure
+            if not isinstance(checklist_items, list):
+                raise ValueError("Response is not a list")
+            
+            # Ensure all items have required fields
+            required_fields = {"id", "title", "description", "category", "priority", "status"}
+            for item in checklist_items:
+                if not all(field in item for field in required_fields):
+                    raise ValueError(f"Item missing required fields: {item}")
+            
+            return checklist_items
+            
+        except json.JSONDecodeError as e:
+            # If JSON parsing fails, return a default checklist
+            print(f"Failed to parse LLM response as JSON: {e}")
+            print(f"Response was: {checklist_text}")
+            return self._get_default_checklist()
+        except Exception as e:
+            print(f"Error processing checklist: {e}")
+            return self._get_default_checklist()
+    
+    def _get_default_checklist(self) -> List[Dict]:
+        """
+        Return a default checklist if LLM generation fails.
+        
+        Follows Fail-Safe pattern - provides sensible defaults.
+        """
+        return [
+            {
+                "id": "doc_001",
+                "title": "Gather payment summaries",
+                "description": "Collect all payment summaries from your employers showing income and tax withheld for the financial year",
+                "category": "documents",
+                "priority": "high",
+                "status": "todo",
+                "estimated_time": "10 minutes"
+            },
+            {
+                "id": "doc_002",
+                "title": "Collect bank statements",
+                "description": "Gather bank statements showing interest earned and any foreign income",
+                "category": "documents",
+                "priority": "high",
+                "status": "todo",
+                "estimated_time": "15 minutes"
+            },
+            {
+                "id": "ded_001",
+                "title": "Review work-related expenses",
+                "description": "Compile receipts for work-related expenses such as home office costs, car expenses, and professional development",
+                "category": "deductions",
+                "priority": "medium",
+                "status": "todo",
+                "estimated_time": "30 minutes"
+            },
+            {
+                "id": "form_001",
+                "title": "Create myGov account",
+                "description": "If you don't have one, create a myGov account and link it to the ATO",
+                "category": "forms",
+                "priority": "high",
+                "status": "todo",
+                "estimated_time": "20 minutes"
+            },
+            {
+                "id": "dead_001",
+                "title": "Note the lodgement deadline",
+                "description": "Tax returns are due by 31 October. Lodge earlier to avoid last-minute stress",
+                "category": "deadlines",
+                "priority": "high",
+                "status": "todo",
+                "estimated_time": "2 minutes"
+            }
+        ]
 
 
 # Singleton instance

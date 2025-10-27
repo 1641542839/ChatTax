@@ -1,9 +1,13 @@
 'use client'
 
 import { Message } from '@/store/chatStore'
+import { useChatStore } from '@/store/chatStore'
 import { UserOutlined, RobotOutlined } from '@ant-design/icons'
-import { Avatar } from 'antd'
+import { Avatar, Divider, Space, Typography } from 'antd'
 import ReactMarkdown from 'react-markdown'
+import GenerateChecklistButton from './GenerateChecklistButton'
+
+const { Text } = Typography
 
 interface MessageBubbleProps {
   message: Message
@@ -11,6 +15,8 @@ interface MessageBubbleProps {
 
 export default function MessageBubble({ message }: MessageBubbleProps) {
   const isUser = message.role === 'user'
+  const { getCurrentConversation } = useChatStore()
+  const currentConversation = getCurrentConversation()
   
   // Status messages
   const getStatusMessage = () => {
@@ -29,6 +35,39 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
   }
   
   const statusMessage = getStatusMessage()
+
+  // Check if should show "Generate Checklist" suggestion
+  const shouldShowChecklistSuggestion = () => {
+    if (isUser || message.isStreaming) return false
+    
+    const keywords = [
+      'prepare',
+      'preparation',
+      'materials',
+      'documents',
+      'files',
+      'need',
+      'checklist',
+      'steps',
+      'process',
+      'how to',
+      'tax return',
+      'what do I need',
+      'what should I',
+      '准备',
+      '材料',
+      '文件',
+      '文档',
+      '需要',
+      '清单',
+      '步骤',
+      '流程',
+      '如何报税',
+      '报税准备',
+    ]
+    
+    return keywords.some((keyword) => message.content.toLowerCase().includes(keyword.toLowerCase()))
+  }
 
   return (
     <div className={`flex gap-4 mb-6 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
@@ -158,6 +197,23 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
           <p className="mt-2 text-xs text-gray-400">
             {new Date(message.timestamp).toLocaleTimeString()}
           </p>
+
+          {/* AI Suggestions - Generate Checklist */}
+          {!isUser && shouldShowChecklistSuggestion() && (
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                <Text type="secondary" style={{ fontSize: 13 }}>
+                  💡 <strong>Smart Suggestion</strong>
+                </Text>
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  Based on your question, I can generate a personalized task checklist to help you better prepare your tax return
+                </Text>
+                {currentConversation && (
+                  <GenerateChecklistButton messages={currentConversation.messages} />
+                )}
+              </Space>
+            </div>
+          )}
         </div>
       </div>
     </div>
