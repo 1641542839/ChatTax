@@ -23,6 +23,53 @@ export default function ChatWindow() {
 
   const currentConversation = getCurrentConversation()
 
+  // 检查是否有待发送的问题（来自 Checklist）
+  useEffect(() => {
+    const pendingQuestion = localStorage.getItem('pendingQuestion')
+    if (pendingQuestion) {
+      // 清除 localStorage
+      localStorage.removeItem('pendingQuestion')
+      
+      // 设置输入框内容
+      setInput(pendingQuestion)
+      
+      // 延迟自动发送（让用户看到问题）
+      setTimeout(() => {
+        handleSendPendingQuestion(pendingQuestion)
+      }, 500)
+    }
+  }, [])
+
+  // 自动发送待定问题
+  const handleSendPendingQuestion = async (question: string) => {
+    if (!question.trim()) return
+
+    let convId = currentConversationId
+
+    // Create new conversation if none exists
+    if (!convId) {
+      convId = createConversation()
+    }
+
+    setInput('')
+    setIsSending(true)
+
+    try {
+      await sendMessage(convId, question, {
+        onComplete: () => {
+          setIsSending(false)
+        },
+        onError: (error) => {
+          console.error('Send message error:', error)
+          setIsSending(false)
+        },
+      })
+    } catch (error) {
+      console.error('Send message error:', error)
+      setIsSending(false)
+    }
+  }
+
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })

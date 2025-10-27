@@ -21,8 +21,7 @@ export default function Home() {
             Welcome to <span className="text-primary-600">ChatTax</span>
           </Title>
           <Paragraph className="mx-auto max-w-2xl text-xl text-gray-600">
-            Your intelligent AI-powered tax assistant. Get instant answers,
-            create checklists, and calculate taxes with ease.
+            Your intelligent personal tax return assistant. Get instant answers, create personalized checklists, and easily complete your Australian individual tax return.
           </Paragraph>
           <div className="mt-8 flex justify-center gap-4">
             <Link href="/chat">
@@ -37,7 +36,7 @@ export default function Home() {
             </Link>
             <Link href="/calculator">
               <Button size="large" className="h-12 px-8 text-lg">
-                Try Calculator
+                Tax Calculator
               </Button>
             </Link>
           </div>
@@ -51,13 +50,12 @@ export default function Home() {
               className="h-full text-center transition-all hover:shadow-xl"
             >
               <MessageOutlined className="mb-4 text-6xl text-primary-500" />
-              <Title level={3}>AI Chat Assistant</Title>
+              <Title level={3}>AI Smart Assistant</Title>
               <Paragraph className="text-gray-600">
-                Get instant answers to your tax questions with our intelligent
-                AI chatbot powered by advanced language models.
+                Get instant answers to your personal tax return questions using our AI chatbot. Powered by GPT-4 technology, specialized in Australian tax law.
               </Paragraph>
               <Link href="/chat">
-                <Button type="link">Try Chat →</Button>
+                <Button type="link">Start Chatting →</Button>
               </Link>
             </Card>
           </Col>
@@ -68,10 +66,9 @@ export default function Home() {
               className="h-full text-center transition-all hover:shadow-xl"
             >
               <CheckSquareOutlined className="mb-4 text-6xl text-green-500" />
-              <Title level={3}>Tax Checklist</Title>
+              <Title level={3}>Personalized Checklist</Title>
               <Paragraph className="text-gray-600">
-                Never miss important tax deadlines and requirements. Our
-                comprehensive checklist keeps you organized.
+                Generate a customized tax preparation checklist based on your personal situation. Never miss important documents and deadlines.
               </Paragraph>
               <Link href="/checklist">
                 <Button type="link">View Checklist →</Button>
@@ -87,8 +84,7 @@ export default function Home() {
               <CalculatorOutlined className="mb-4 text-6xl text-orange-500" />
               <Title level={3}>Tax Calculator</Title>
               <Paragraph className="text-gray-600">
-                Calculate your taxes accurately with our easy-to-use calculator.
-                Get instant estimates and plan ahead.
+                Accurately calculate your personal income tax using our easy-to-use calculator. Get instant estimates and plan your tax ahead.
               </Paragraph>
               <Link href="/calculator">
                 <Button type="link">Calculate Now →</Button>
@@ -107,31 +103,27 @@ export default function Home() {
               <div className="mb-4">
                 <Title level={4}>🚀 Fast & Efficient</Title>
                 <Paragraph>
-                  Get instant answers and calculations without the wait. Our AI
-                  processes your queries in real-time.
+                  Get instant answers and calculation results. Our AI processes your queries in real-time with no waiting.
                 </Paragraph>
               </div>
               <div className="mb-4">
-                <Title level={4}>🔒 Secure & Private</Title>
+                <Title level={4}>🇦🇺 Focused on Australian Personal Tax</Title>
                 <Paragraph>
-                  Your data is encrypted and secure. We prioritize your privacy
-                  and never share your information.
+                  Specially designed for Australian individual taxpayers. Fully compliant with ATO (Australian Taxation Office) regulations and requirements.
                 </Paragraph>
               </div>
             </Col>
             <Col xs={24} md={12}>
               <div className="mb-4">
-                <Title level={4}>📊 Accurate Results</Title>
+                <Title level={4}>📊 Accurate & Reliable</Title>
                 <Paragraph>
-                  Our calculations are based on the latest tax regulations and
-                  are continuously updated.
+                  Based on the latest Australian tax laws and continuously updated. Ensures your calculations and advice are accurate and error-free.
                 </Paragraph>
               </div>
               <div className="mb-4">
-                <Title level={4}>💡 Easy to Use</Title>
+                <Title level={4}>💡 Simple & Easy to Use</Title>
                 <Paragraph>
-                  No tax expertise required. Our intuitive interface makes tax
-                  management simple for everyone.
+                  No tax expertise required. Intuitive interface makes managing personal tax returns simple for everyone.
                 </Paragraph>
               </div>
             </Col>

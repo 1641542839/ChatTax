@@ -1,13 +1,16 @@
 'use client'
 
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Task, TaskStatus, useChecklistStore } from '@/store/checklistStore'
-import { Card, Checkbox, Tag, Button, Popconfirm } from 'antd'
+import { Card, Checkbox, Tag, Button, Popconfirm, message, Space } from 'antd'
 import {
   CheckCircleOutlined,
   ClockCircleOutlined,
   FileTextOutlined,
   DeleteOutlined,
   EditOutlined,
+  MessageOutlined,
 } from '@ant-design/icons'
 
 interface TaskCardProps {
@@ -50,14 +53,55 @@ const getPriorityColor = (priority?: string) => {
 }
 
 export default function TaskCard({ task }: TaskCardProps) {
-  const { toggleTaskStatus, deleteTask } = useChecklistStore()
+  const router = useRouter()
+  const {
+    toggleTaskStatus,
+    deleteTask,
+    updateTaskStatusInAPI,
+    currentChecklistId,
+  } = useChecklistStore()
+  const [isUpdating, setIsUpdating] = useState(false)
 
-  const handleToggle = () => {
-    toggleTaskStatus(task.id)
+  const handleToggle = async () => {
+    // 如果有 API 连接，同步到后端
+    if (currentChecklistId) {
+      setIsUpdating(true)
+      try {
+        // 计算下一个状态
+        let newStatus: TaskStatus
+        if (task.status === 'todo') newStatus = 'doing'
+        else if (task.status === 'doing') newStatus = 'done'
+        else newStatus = 'todo'
+
+        await updateTaskStatusInAPI(task.id, newStatus, 1) // 使用测试用户 ID
+        message.success(`✅ 状态已更新为 ${newStatus}`)
+      } catch (err) {
+        message.error('更新失败，请重试')
+      } finally {
+        setIsUpdating(false)
+      }
+    } else {
+      // 本地模式，直接切换
+      toggleTaskStatus(task.id)
+    }
   }
 
   const handleDelete = () => {
     deleteTask(task.id)
+    message.success('Task deleted')
+  }
+
+  // Ask AI about this task
+  const handleAskAI = () => {
+    const question = `Regarding the task "${task.title}", I would like to know:\n1. What specific materials do I need to prepare?\n2. What precautions should I take?\n3. Approximately how long will it take to complete?`
+    
+    // Save question to localStorage
+    localStorage.setItem('pendingQuestion', question)
+    
+    // Navigate to chat page
+    router.push('/chat')
+    
+    message.info('Navigating to AI Assistant...')
   }
 
   return (
@@ -72,6 +116,7 @@ export default function TaskCard({ task }: TaskCardProps) {
         <Checkbox
           checked={task.status === 'done'}
           onChange={handleToggle}
+          disabled={isUpdating}
           className="mt-1"
         />
 
@@ -128,26 +173,37 @@ export default function TaskCard({ task }: TaskCardProps) {
           <Button
             type="text"
             size="small"
+            icon={<MessageOutlined />}
+            onClick={handleAskAI}
+            title="Ask AI"
+          />
+          <Button
+            type="text"
+            size="small"
             icon={<EditOutlined />}
             onClick={handleToggle}
+            loading={isUpdating}
+            disabled={isUpdating}
             title="Change status"
           />
-          <Popconfirm
-            title="Delete task?"
-            description="This action cannot be undone."
-            onConfirm={handleDelete}
-            okText="Delete"
-            cancelText="Cancel"
-            okButtonProps={{ danger: true }}
-          >
-            <Button
-              type="text"
-              danger
-              size="small"
-              icon={<DeleteOutlined />}
-              title="Delete task"
-            />
-          </Popconfirm>
+          {!currentChecklistId && (
+            <Popconfirm
+              title="Delete task?"
+              description="This action cannot be undone."
+              onConfirm={handleDelete}
+              okText="Delete"
+              cancelText="Cancel"
+              okButtonProps={{ danger: true }}
+            >
+              <Button
+                type="text"
+                danger
+                size="small"
+                icon={<DeleteOutlined />}
+                title="Delete task"
+              />
+            </Popconfirm>
+          )}
         </div>
       </div>
     </Card>

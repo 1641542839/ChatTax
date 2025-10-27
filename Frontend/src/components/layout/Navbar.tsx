@@ -22,17 +22,17 @@ const Navbar = () => {
     {
       key: '/chat',
       icon: <MessageOutlined />,
-      label: <Link href="/chat">Chat</Link>,
+      label: <Link href="/chat">AI Assistant</Link>,
     },
     {
       key: '/checklist',
       icon: <CheckSquareOutlined />,
-      label: <Link href="/checklist">Checklist</Link>,
+      label: <Link href="/checklist">Tax Checklist</Link>,
     },
     {
       key: '/calculator',
       icon: <CalculatorOutlined />,
-      label: <Link href="/calculator">Calculator</Link>,
+      label: <Link href="/calculator">Tax Calculator</Link>,
     },
   ]
 
