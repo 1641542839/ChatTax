@@ -1,289 +1,206 @@
 # ChatTax Backend
 
-FastAPI backend for ChatTax - an AI-powered tax assistant application.
+FastAPI backend for ChatTax - an AI-powered Australian tax assistant application.
 
-## Features
+## Overview
 
-- **JWT Authentication**: Secure user authentication with access and refresh tokens
-- **SSE Streaming**: Real-time chat responses using Server-Sent Events
-- **RAG (Retrieval-Augmented Generation)**: AI-powered tax question answering with citations
-- **FAISS Vector Database**: Fast similarity search using pre-crawled tax documents
-- **Real Tax Document Data**: Metadata includes source URLs, crawl dates, and provenance
-- **Modular Architecture**: Clean separation of concerns (routers, models, schemas, services)
-- **SQLAlchemy ORM**: Database management with support for SQLite, PostgreSQL, MySQL
-- **CORS Enabled**: Configured for Next.js frontend integration
+ChatTax Backend provides intelligent tax assistance through:
+
+- **RAG (Retrieval-Augmented Generation)**: AI answers grounded in 3,246 official Australian tax documents
+- **FAISS Vector Search**: Fast semantic search (~5ms) through tax documents  
+- **OpenAI GPT-4o-mini**: Generates accurate answers with citations
+- **Dynamic Checklists**: Personalized tax prep tasks (5-15 items based on complexity)
+- **JWT Authentication**: Secure user management
+- **SSE Streaming**: Real-time chat responses
+
+**Target Users**: Australian individual taxpayers only
+
+## Quick Start
+
+### Prerequisites
+
+- Python 3.8+ (3.11 or 3.12 recommended)
+- OpenAI API key from https://platform.openai.com/api-keys
+
+### Installation (5 minutes)
+
+```powershell
+# 1. Navigate to backend
+cd Backend
+
+# 2. Create virtual environment
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+
+# 3. Install dependencies
+pip install -r requirements.txt
+
+# 4. Configure environment
+Copy-Item .env.example .env
+# Edit .env and add:
+#   SECRET_KEY=<generate-with-secrets.token_urlsafe(32)>
+#   OPENAI_API_KEY=sk-proj-your-key-here
+
+# 5. Start server
+uvicorn main:app --reload
+```
+
+### Test the System
+
+```powershell
+# Health check
+curl http://localhost:8000/health
+
+# Test RAG query
+curl -X POST "http://localhost:8000/api/chat/query" `
+  -H "Content-Type: application/json" `
+  -d '{
+    "question": "What is the tax-free threshold in Australia?",
+    "top_k": 3
+  }'
+```
+
+**Access Points**:
+- API: http://localhost:8000
+- Interactive Docs: http://localhost:8000/docs
+- ReDoc: http://localhost:8000/redoc
 
 ## Project Structure
 
 ```
 Backend/
 ├── app/
-│   ├── api/
-│   │   └── routers/
-│   │       ├── auth.py          # Authentication endpoints
-│   │       ├── chat.py          # Chat streaming endpoints
-│   │       └── query.py         # RAG query endpoints
-│   ├── core/
-│   │   ├── config.py            # Application configuration
-│   │   └── security.py          # JWT and password utilities
-│   ├── db/
-│   │   ├── database.py          # Database setup and session management
-│   │   └── faiss_index/         # FAISS vector database index
-│   ├── models/
-│   │   └── user.py              # SQLAlchemy User model
-│   ├── schemas/
-│   │   └── schemas.py           # Pydantic validation schemas
-│   └── services/
-│       ├── auth_service.py      # Authentication business logic
-│       ├── chat_service.py      # Chat business logic
-│       ├── vector_store_service.py  # FAISS vector store management
-│       └── llm_service.py       # OpenAI LLM integration
-├── main.py                      # FastAPI application entry point
-├── requirements.txt             # Python dependencies
-├── README.md                    # This file
-└── RAG_TESTING.md              # RAG endpoint testing guide
-
-## Installation
-
-### 1. Prerequisites
-
-- Python 3.8 or higher
-- pip (Python package manager)
-
-### 2. Clone and Setup
-
-```powershell
-# Navigate to backend directory
-cd Backend
-
-# Create virtual environment (recommended)
-python -m venv venv
-
-# Activate virtual environment
-# Windows PowerShell:
-.\venv\Scripts\Activate.ps1
-
-# Install dependencies
-pip install -r requirements.txt
+│   ├── api/routers/         # HTTP endpoints (auth, chat, query, checklist)
+│   ├── services/            # Business logic (llm, vector_store, auth)
+│   ├── models/              # SQLAlchemy ORM models
+│   ├── schemas/             # Pydantic validation schemas
+│   ├── core/                # Config, security utilities
+│   └── db/
+│       ├── database.py      # Database connection
+│       └── faiss_index/     # Pre-built vector store (3,246 docs)
+├── docs/                    # 📚 Comprehensive documentation
+│   ├── 01-getting-started/  # Installation, quickstart, configuration
+│   ├── 02-architecture/     # System design, RAG, FAISS
+│   ├── 03-api/              # API endpoints reference
+│   └── 04-development/      # Testing, deployment, contributing
+├── main.py                  # FastAPI application entry
+└── requirements.txt         # Python dependencies
 ```
 
-### 3. Environment Configuration
+## Documentation
 
-```powershell
-# Copy environment template
-Copy-Item .env.example .env
+### 📖 Getting Started
+- **[Installation Guide](./docs/01-getting-started/installation.md)** - Complete setup instructions
+- **[Quick Start](./docs/01-getting-started/quickstart.md)** - 5-minute getting started guide
+- **[Configuration](./docs/01-getting-started/configuration.md)** - Environment variables and settings
 
-# Edit .env file with your configuration
-# IMPORTANT: 
-# 1. Change SECRET_KEY in production!
-# 2. Add your OpenAI API key for RAG features
+### 🏗️ Architecture
+- **[System Overview](./docs/02-architecture/overview.md)** - High-level architecture and design patterns
+- **[RAG System](./docs/02-architecture/rag-system.md)** - Retrieval-Augmented Generation pipeline
+- **[FAISS Integration](./docs/02-architecture/faiss-integration.md)** - Vector store architecture (coming soon)
+
+### 🔌 API Reference
+- **[Endpoints](./docs/03-api/endpoints.md)** - Complete API reference with examples
+- **[Authentication](./docs/03-api/authentication.md)** - JWT auth flow (coming soon)
+- **[RAG Query](./docs/03-api/query-endpoint.md)** - Query endpoint details (coming soon)
+
+### 🛠️ Development
+- **[Testing Guide](./docs/04-development/testing.md)** - Unit, integration, and API testing
+- **[Deployment](./docs/04-development/deployment.md)** - Production deployment guide (coming soon)
+- **[Troubleshooting](./docs/04-development/troubleshooting.md)** - Common issues and solutions (coming soon)
+
+## Key Features
+
+### RAG Query System
+Answer Australian tax questions with AI, grounded in official ATO documents:
+
+```json
+{
+  "question": "What are home office deductions in Australia?",
+  "top_k": 3
+}
+→ 
+{
+  "answer": "You can claim deductions for... [Source 1]",
+  "sources": [
+    {
+      "source_url": "https://www.ato.gov.au/...",
+      "section_heading": "Home office expenses",
+      "relevance_score": 0.89
+    }
+  ],
+  "confidence": 0.85
+}
 ```
 
-**Required Environment Variables**:
-- `SECRET_KEY`: JWT secret key (generate a secure random string)
-- `OPENAI_API_KEY`: OpenAI API key from https://platform.openai.com/api-keys
+### Dynamic Checklist Generation
+Generate personalized tax preparation checklists:
 
-### 4. Database Initialization
-
-```powershell
-# The FAISS index and metadata are pre-loaded from crawled data
-# Located in: app/db/faiss_index/
-#   - index.faiss: Vector embeddings
-#   - metadata.parquet: Document metadata with URLs, dates, provenance
-
-# User database will be created automatically on first run
-# By default, uses SQLite (chattax.db)
-
-# For PostgreSQL or MySQL, update DATABASE_URL in .env
+```json
+{
+  "employment_status": "employed",
+  "income_sources": ["salary", "investment"],
+  "has_dependents": true
+}
+→ 8-12 personalized tasks
 ```
 
-### 5. Run the Server
+### Two-Stage Retrieval
+- **Stage 1**: FAISS bi-encoder (fast, top 20 candidates)
+- **Stage 2**: Cross-encoder reranking (accurate, top 5 results)
 
-```powershell
-# Development mode with auto-reload
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+## Tech Stack
 
-# Production mode
-uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
+- **Framework**: FastAPI 0.104.1
+- **AI/LLM**: OpenAI GPT-4o-mini via LangChain
+- **Vector Store**: FAISS-CPU 1.9.0 (3,246 documents, 384-dim)
+- **Embeddings**: sentence-transformers (all-MiniLM-L6-v2)
+- **Database**: SQLAlchemy (SQLite/PostgreSQL/MySQL)
+- **Authentication**: JWT with bcrypt password hashing
+
+## For GitHub Copilot
+
+This backend implements a **RAG (Retrieval-Augmented Generation)** system for Australian tax assistance:
+
+**Core Architecture**:
+1. User asks question → Embed query (384-dim vector)
+2. FAISS searches 3,246 tax documents → Top 20 candidates
+3. Cross-encoder reranks → Top 5 most relevant
+4. Metadata lookup → Get source URLs, text, dates
+5. GPT-4o-mini generates answer with citations
+
+**Key Design Patterns**:
+- Repository pattern (vector store abstraction)
+- Strategy pattern (reranking algorithms)
+- Dependency injection (FastAPI dependencies)
+- Factory pattern (database sessions)
+
+**Critical Files**:
+- `app/services/vector_store_service.py` - FAISS search, metadata retrieval
+- `app/services/llm_service.py` - OpenAI integration, prompt engineering
+- `app/services/reranker_service.py` - Two-stage retrieval
+- `app/api/routers/query.py` - RAG query endpoint
+
+**FAISS-Metadata Correspondence**: Position-based mapping (O(1) access)
+```python
+# FAISS returns: indices = [245, 1089, 2341]
+for idx in indices:
+    meta_row = metadata.iloc[idx]  # Direct row access
 ```
 
-The API will be available at:
-- **API**: http://localhost:8000
-- **Interactive Docs**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
+**Focus**: Australian individual taxpayers only (NOT U.S., NOT business tax)
 
-## API Endpoints
+## Contributing
 
-### Authentication
-
-- **POST** `/api/auth/register` - Register a new user
-  ```json
-  {
-    "email": "user@example.com",
-    "username": "username",
-    "password": "password123",
-    "full_name": "John Doe"
-  }
-  ```
-
-- **POST** `/api/auth/login` - Login and get tokens
-  ```
-  Form Data:
-  - username: your_username
-  - password: your_password
-  ```
-
-- **GET** `/api/auth/me` - Get current user info (requires JWT)
-
-### Chat
-
-- **POST** `/api/chat/stream` - Stream chat responses via SSE
-  ```json
-  {
-    "content": "What are the tax deductions for 2024?"
-  }
-  ```
-
-### Query (RAG)
-
-- **POST** `/api/chat/query` - Answer tax questions with citations
-  ```json
-  {
-    "question": "What is the standard deduction for 2024?",
-    "user_type": "individual",
-    "top_k": 3
-  }
-  ```
-  
-  Response includes:
-  - `answer`: AI-generated answer with citations [Source 1], [Source 2]
-  - `sources`: List of source documents with:
-    - `chunk_id`: Unique chunk identifier
-    - `doc_id`: Document ID
-    - `source_url`: Original IRS/tax authority URL
-    - `section_heading`: Section name from source
-    - `text`: Relevant text excerpt
-    - `crawl_date`: When document was crawled
-    - `last_updated_on_page`: Last update date from source
-    - `is_table_summary`: Boolean for table summaries
-    - `provenance`: Data source information
-    - `relevance_score`: 0-1 similarity score
-  - `confidence`: Overall confidence score (0-1)
-  - `timestamp`: Response timestamp
-
-- **GET** `/api/chat/stats` - Get vector store statistics
-
-## Next.js Integration
-
-### 1. Update Frontend API Base URL
-
-In your Next.js project, update the API base URL:
-
-```typescript
-// src/hooks/useStreamChat.ts or similar
-const API_BASE_URL = 'http://localhost:8000/api';
-```
-
-### 2. Authentication Flow
-
-```typescript
-// Login
-const response = await fetch('http://localhost:8000/api/auth/login', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-  body: new URLSearchParams({
-    username: 'your_username',
-    password: 'your_password',
-  }),
-});
-const { access_token } = await response.json();
-
-// Use token for authenticated requests
-const chatResponse = await fetch('http://localhost:8000/api/chat/stream', {
-  method: 'POST',
-  headers: {
-    'Authorization': `Bearer ${access_token}`,
-    'Content-Type': 'application/json',
-  },
-  body: JSON.stringify({ content: 'Your question' }),
-});
-```
-
-### 3. SSE Streaming Example
-
-```typescript
-const eventSource = new EventSource(
-  'http://localhost:8000/api/chat/stream',
-  { withCredentials: true }
-);
-
-eventSource.addEventListener('message', (event) => {
-  const data = JSON.parse(event.data);
-  console.log('Chunk:', data.content);
-});
-
-eventSource.addEventListener('done', () => {
-  console.log('Stream completed');
-  eventSource.close();
-});
-```
-
-## Development
-
-### Add New Endpoint
-
-1. Create router in `app/api/routers/`
-2. Create service in `app/services/`
-3. Define schemas in `app/schemas/schemas.py`
-4. Include router in `main.py`
-
-### Database Migration
-
-For production, consider using Alembic for database migrations:
-
-```powershell
-pip install alembic
-alembic init alembic
-alembic revision --autogenerate -m "Initial migration"
-alembic upgrade head
-```
-
-## Security Notes
-
-- **Change SECRET_KEY**: Generate a secure random key for production
-  ```powershell
-  python -c "import secrets; print(secrets.token_urlsafe(32))"
-  ```
-- **Use HTTPS**: Always use HTTPS in production
-- **Database**: Use PostgreSQL or MySQL for production (not SQLite)
-- **Environment Variables**: Never commit `.env` file to version control
-
-## Troubleshooting
-
-### CORS Errors
-
-If you see CORS errors, verify:
-1. `CORS_ORIGINS` in `.env` includes your Next.js URL
-2. Frontend is running on the correct port (default: 3000)
-
-### Database Errors
-
-```powershell
-# Reset database (development only)
-Remove-Item chattax.db
-# Restart server to recreate
-```
-
-### Import Errors
-
-```powershell
-# Ensure virtual environment is activated
-.\venv\Scripts\Activate.ps1
-
-# Reinstall dependencies
-pip install -r requirements.txt
-```
+Contributions are welcome! Please see our [Contributing Guide](./docs/04-development/contributing.md) (coming soon).
 
 ## License
 
 MIT License - See LICENSE file for details
+
+---
+
+**Need Help?** 
+- Check [Troubleshooting Guide](./docs/04-development/troubleshooting.md)
+- Review [API Documentation](./docs/03-api/endpoints.md)
+- See [Architecture Overview](./docs/02-architecture/overview.md)
