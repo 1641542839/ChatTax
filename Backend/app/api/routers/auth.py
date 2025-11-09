@@ -103,3 +103,73 @@ async def login(
 async def get_me(current_user=Depends(get_current_user)):
     """Get current user information."""
     return current_user
+
+
+@router.post("/google", response_model=Token)
+async def google_login(
+    google_token: str,
+    db: Session = Depends(get_db),
+):
+    """
+    Authenticate user with Google OAuth token.
+    
+    This endpoint receives a Google ID token from the frontend,
+    verifies it with Google, and either creates a new user or
+    logs in an existing user.
+    
+    Args:
+        google_token: Google ID token from frontend Google Sign-In
+        db: Database session
+        
+    Returns:
+        JWT access token and refresh token
+        
+    Raises:
+        HTTPException 401: If Google token is invalid
+        HTTPException 400: If email is not verified
+    """
+    from app.services.google_oauth_service import google_oauth_service
+    
+    # Verify Google token and get user info
+    token_info = await google_oauth_service.verify_google_token(google_token)
+    user_info = google_oauth_service.get_user_info_from_token(token_info)
+    
+    # Check if user exists by Google ID
+    user = AuthService.get_user_by_google_id(db, user_info["google_id"])
+    
+    if not user:
+        # Check if user exists by email (existing account linking)
+        user = AuthService.get_user_by_email(db, user_info["email"])
+        
+        if user:
+            # Link existing account to Google
+            user.google_id = user_info["google_id"]
+            user.avatar_url = user_info["avatar_url"]
+            user.oauth_provider = "google"
+            db.commit()
+            db.refresh(user)
+        else:
+            # Create new user from Google account
+            user = AuthService.create_oauth_user(
+                db,
+                email=user_info["email"],
+                full_name=user_info["full_name"],
+                google_id=user_info["google_id"],
+                avatar_url=user_info["avatar_url"],
+            )
+    
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Inactive user",
+        )
+    
+    # Create JWT tokens
+    access_token = create_access_token(data={"sub": str(user.id)})
+    refresh_token = create_refresh_token(data={"sub": str(user.id)})
+    
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+    }

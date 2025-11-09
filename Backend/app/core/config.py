@@ -29,6 +29,11 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
 
+    # Google OAuth 2.0
+    google_client_id: str | None = None
+    google_client_secret: str | None = None
+    google_redirect_uri: str = "http://localhost:3000/auth/callback/google"
+
     # OpenAI (Optional)
     openai_api_key: str | None = None
 
