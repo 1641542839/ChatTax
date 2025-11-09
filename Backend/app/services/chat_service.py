@@ -75,9 +75,12 @@ class ChatService:
         message: str,
         user_type: str = "individual",
         use_reranking: bool = True,
+        conversation_history: list = None,
     ) -> AsyncGenerator[str, None]:
         """
         Generate streaming response using RAG pipeline.
+        
+        Enhanced with multi-turn conversation support (follows Open/Closed Principle).
         
         Pipeline:
         1. Retrieve relevant documents (FAISS + optional reranking)

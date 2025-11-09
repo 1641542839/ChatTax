@@ -7,8 +7,8 @@ from contextlib import asynccontextmanager
 
 from app.core.config import settings
 from app.db.database import Base, engine
-from app.api.routers import auth, chat, query, checklist
-from app.models import user, checklist as checklist_model  # Import models to register with Base
+from app.api.routers import auth, chat, query, checklist, session
+from app.models import user, checklist as checklist_model, chat_session  # Import models to register with Base
 
 
 @asynccontextmanager
@@ -42,6 +42,7 @@ app.include_router(auth.router, prefix="/api")
 app.include_router(chat.router, prefix="/api")
 app.include_router(query.router, prefix="/api")
 app.include_router(checklist.router)  # Already has /api prefix in router definition
+app.include_router(session.router, prefix="/api")
 
 
 @app.get("/")

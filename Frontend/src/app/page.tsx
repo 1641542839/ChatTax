@@ -23,7 +23,7 @@ export default function Home() {
             Welcome to <span className="text-primary-600">ChatTax</span>
           </Title>
           <Paragraph className="mx-auto max-w-2xl text-xl text-gray-600">
-            Your intelligent personal tax return assistant. Get instant answers, create personalized checklists, and easily complete your Australian individual tax return.
+            Your AI-powered tax companion for Australian taxpayers. Lodge your return with confidence using intelligent guidance, personalized checklists, and accurate calculations.
           </Paragraph>
           <div className="mt-8 flex justify-center gap-4">
             <Link href="/chat">
@@ -54,7 +54,7 @@ export default function Home() {
               <MessageOutlined className="mb-4 text-6xl text-primary-500" />
               <Title level={3}>AI Smart Assistant</Title>
               <Paragraph className="text-gray-600">
-                Get instant answers to your personal tax return questions using our AI chatbot. Powered by GPT-4 technology, specialized in Australian tax law.
+                Chat with your personal tax expert 24/7. Get instant answers to complex tax questions in plain English. Powered by GPT-4, trained on Australian tax law and ATO guidelines.
               </Paragraph>
               <Link href="/chat">
                 <Button type="link">Start Chatting →</Button>
@@ -70,7 +70,7 @@ export default function Home() {
               <CheckSquareOutlined className="mb-4 text-6xl text-green-500" />
               <Title level={3}>Personalized Checklist</Title>
               <Paragraph className="text-gray-600">
-                Generate a customized tax preparation checklist based on your personal situation. Never miss important documents and deadlines.
+                Your tailored tax prep roadmap. Get a smart checklist customized to your income, deductions, and situation. Never miss important documents or deadlines—lodge with confidence!
               </Paragraph>
               <Link href="/checklist">
                 <Button type="link">View Checklist →</Button>
@@ -86,7 +86,7 @@ export default function Home() {
               <CalculatorOutlined className="mb-4 text-6xl text-orange-500" />
               <Title level={3}>Tax Calculator</Title>
               <Paragraph className="text-gray-600">
-                Accurately calculate your personal income tax using our easy-to-use calculator. Get instant estimates and plan your tax ahead.
+                Know your refund or tax bill in seconds! Our smart calculator handles PAYG, offsets, Medicare levy, and HECS-HELP. Plan ahead and avoid surprises at tax time.
               </Paragraph>
               <Link href="/calculator">
                 <Button type="link">Calculate Now →</Button>
@@ -98,34 +98,34 @@ export default function Home() {
         {/* Info Section */}
         <Card className="bg-white/80 backdrop-blur-sm">
           <Title level={2} className="mb-4 text-center">
-            Why Choose ChatTax?
+            Why Aussies Love ChatTax
           </Title>
           <Row gutter={[24, 24]}>
             <Col xs={24} md={12}>
               <div className="mb-4">
-                <Title level={4}>🚀 Fast & Efficient</Title>
+                <Title level={4}>🚀 Lightning Fast Results</Title>
                 <Paragraph>
-                  Get instant answers and calculation results. Our AI processes your queries in real-time with no waiting.
+                  Get instant answers and tax calculations in seconds. No waiting rooms, no phone queues—just immediate, accurate help when you need it.
                 </Paragraph>
               </div>
               <div className="mb-4">
-                <Title level={4}>🇦🇺 Focused on Australian Personal Tax</Title>
+                <Title level={4}>🇦🇺 Built for Australian Taxpayers</Title>
                 <Paragraph>
-                  Specially designed for Australian individual taxpayers. Fully compliant with ATO (Australian Taxation Office) regulations and requirements.
+                  Designed exclusively for Aussie individual tax returns. Fully aligned with ATO requirements, tax rates, and local deductions you can actually claim.
                 </Paragraph>
               </div>
             </Col>
             <Col xs={24} md={12}>
               <div className="mb-4">
-                <Title level={4}>📊 Accurate & Reliable</Title>
+                <Title level={4}>📊 Accurate & Up-to-Date</Title>
                 <Paragraph>
-                  Based on the latest Australian tax laws and continuously updated. Ensures your calculations and advice are accurate and error-free.
+                  Always current with the latest tax laws and ATO updates. Get reliable calculations and advice you can trust for your 2024-25 return.
                 </Paragraph>
               </div>
               <div className="mb-4">
-                <Title level={4}>💡 Simple & Easy to Use</Title>
+                <Title level={4}>💡 No Tax Jargon, Just Clarity</Title>
                 <Paragraph>
-                  No tax expertise required. Intuitive interface makes managing personal tax returns simple for everyone.
+                  Tax made simple. Our friendly interface breaks down complex concepts into plain English. Perfect for first-time filers and seasoned pros alike.
                 </Paragraph>
               </div>
             </Col>

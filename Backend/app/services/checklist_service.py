@@ -7,12 +7,22 @@ Follows SOLID principles:
 - Dependency Inversion: Depends on abstractions (SQLAlchemy models)
 """
 from typing import List, Dict, Optional
+from enum import Enum
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 from datetime import datetime
 from app.models.checklist import Checklist
 from app.schemas.schemas import ChecklistIdentityInfo, ChecklistItem, ChecklistResponse
 from app.services.llm_service import get_llm_service
+from app.services.identity_extractor_service import IdentityExtractorService
+from app.services.session_service import SessionService
+
+
+class GenerationMode(str, Enum):
+    """Checklist generation modes."""
+    FORM = "form"  # Path 1: Quick form-based generation
+    GUIDED_CHAT = "guided_chat"  # Path 2: Guided conversation
+    FREE_CHAT = "free_chat"  # Path 3: Free conversation extraction
 
 
 class ChecklistService:
@@ -35,16 +45,21 @@ class ChecklistService:
     async def generate_and_save_checklist(
         self, 
         user_id: int, 
-        identity_info: ChecklistIdentityInfo
+        identity_info: ChecklistIdentityInfo,
+        generation_mode: GenerationMode = GenerationMode.FORM,
+        session_id: Optional[str] = None
     ) -> ChecklistResponse:
         """
         Generate a personalized checklist using LLM and save to database.
         
-        Follows Open/Closed Principle - can extend without modifying.
+        Follows Open/Closed Principle - extended to support three generation modes
+        without modifying the core logic.
         
         Args:
             user_id: ID of the user
             identity_info: User's identity and tax situation information
+            generation_mode: How checklist was generated (form/guided_chat/free_chat)
+            session_id: Optional session ID for chat-based generation
             
         Returns:
             ChecklistResponse with generated checklist
@@ -69,8 +84,72 @@ class ChecklistService:
         self.db.commit()
         self.db.refresh(checklist)
         
-        # Step 4: Convert to response schema
+        # Step 4: Link to session if provided (for chat-based generation)
+        if session_id:
+            SessionService.update_checklist_link(
+                db=self.db,
+                session_id=session_id,
+                user_id=user_id,
+                checklist_id=checklist.id
+            )
+        
+        # Step 5: Convert to response schema
         return self._to_response(checklist)
+    
+    async def generate_from_conversation(
+        self,
+        user_id: int,
+        session_id: str,
+        generation_mode: GenerationMode = GenerationMode.FREE_CHAT
+    ) -> ChecklistResponse:
+        """
+        Generate checklist from conversation history (Path 2 & 3).
+        
+        Follows Single Responsibility - delegates extraction to IdentityExtractorService.
+        
+        Args:
+            user_id: ID of the user
+            session_id: Session UUID containing conversation
+            generation_mode: guided_chat or free_chat
+            
+        Returns:
+            ChecklistResponse with generated checklist
+            
+        Raises:
+            ValueError: If session not found or insufficient information
+        """
+        # Step 1: Get session and conversation history
+        session = SessionService.get_session(self.db, session_id, user_id)
+        if not session:
+            raise ValueError("Session not found")
+        
+        conversation_history = session.conversation_history or []
+        if not conversation_history:
+            raise ValueError("No conversation history found")
+        
+        # Step 2: Extract identity info from conversation
+        extraction_result = IdentityExtractorService.extract_identity_from_conversation(
+            conversation_history
+        )
+        
+        if not extraction_result["is_complete"]:
+            raise ValueError(
+                f"Insufficient information. Missing fields: {extraction_result['missing_fields']}"
+            )
+        
+        # Step 3: Format for checklist generation
+        identity_info_dict = IdentityExtractorService.format_for_checklist(
+            extraction_result["extracted_info"]
+        )
+        identity_info = ChecklistIdentityInfo(**identity_info_dict)
+        
+        # Step 4: Generate and save checklist with session link
+        return await self.generate_and_save_checklist(
+            user_id=user_id,
+            identity_info=identity_info,
+            generation_mode=generation_mode,
+            session_id=session_id
+        )
     
     def get_checklist(self, checklist_id: int, user_id: int) -> Optional[ChecklistResponse]:
         """

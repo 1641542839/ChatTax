@@ -1,12 +1,12 @@
 /**
  * Checklist API Service
- * 封装所有与 checklist 相关的 API 调用
+ * Encapsulates all checklist-related API calls
  */
 
-// API 基础配置
+// API base configuration
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
-// ==================== 类型定义 ====================
+// ==================== Type Definitions ====================
 
 export interface ChecklistIdentityInfo {
   employment_status: 'employed' | 'self_employed' | 'unemployed' | 'retired'
@@ -47,10 +47,10 @@ export interface UpdateItemStatusRequest {
   status: 'todo' | 'doing' | 'done'
 }
 
-// ==================== API 函数 ====================
+// ==================== API Functions ====================
 
 /**
- * 生成个性化清单
+ * Generate personalized checklist
  * POST /api/checklist/generate
  */
 export async function generateChecklist(
@@ -73,7 +73,7 @@ export async function generateChecklist(
 }
 
 /**
- * 获取单个清单
+ * Get single checklist
  * GET /api/checklist/{id}
  */
 export async function getChecklist(
@@ -99,7 +99,7 @@ export async function getChecklist(
 }
 
 /**
- * 获取用户的所有清单
+ * Get all checklists for a user
  * GET /api/checklist/user/{user_id}
  */
 export async function getUserChecklists(userId: number): Promise<ChecklistResponse[]> {
@@ -121,7 +121,7 @@ export async function getUserChecklists(userId: number): Promise<ChecklistRespon
 }
 
 /**
- * 更新清单项状态
+ * Update checklist item status
  * PATCH /api/checklist/{id}/status
  */
 export async function updateItemStatus(
@@ -151,7 +151,7 @@ export async function updateItemStatus(
 }
 
 /**
- * 删除清单
+ * Delete checklist
  * DELETE /api/checklist/{id}
  */
 export async function deleteChecklist(
@@ -176,10 +176,10 @@ export async function deleteChecklist(
   return response.json()
 }
 
-// ==================== 辅助函数 ====================
+// ==================== Helper Functions ====================
 
 /**
- * 将后端的 ChecklistItem 转换为前端的 Task 格式
+ * Convert backend ChecklistItem to frontend Task format
  */
 export function convertChecklistItemToTask(item: ChecklistItem) {
   return {
@@ -195,7 +195,7 @@ export function convertChecklistItemToTask(item: ChecklistItem) {
 }
 
 /**
- * 示例：构造一个身份信息对象
+ * Example: Construct an identity information object
  */
 export function createIdentityInfo(
   employmentStatus: ChecklistIdentityInfo['employment_status'],

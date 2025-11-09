@@ -40,15 +40,15 @@ export default function ChecklistPage() {
 
   const [dataSource, setDataSource] = useState<'local' | 'api'>('local')
 
-  // 初始化：尝试从 API 加载，失败则使用本地数据
+  // Initialize: try loading from API, fallback to local data
   useEffect(() => {
     const initializeData = async () => {
       try {
-        // 尝试从 API 加载用户清单（使用测试用户 ID = 1）
+        // Try to load user checklist from API (using test user ID = 1)
         await loadUserChecklistsFromAPI(1)
         setDataSource('api')
       } catch (err) {
-        // API 失败，使用本地默认数据
+        // API failed, use local default data
         console.log('Failed to load from API, using local data')
         initializeDefaultTasks()
         setDataSource('local')
@@ -69,9 +69,9 @@ export default function ChecklistPage() {
     try {
       await loadUserChecklistsFromAPI(1)
       setDataSource('api')
-      message.success('✅ Checklist refreshed')
+      message.success('✅ Checklist refreshed successfully')
     } catch (err) {
-      message.error('Failed to refresh')
+      message.error('Failed to refresh checklist')
     }
   }
 

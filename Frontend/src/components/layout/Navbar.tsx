@@ -2,14 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
-import { Menu, Avatar, Dropdown, Button, Space, message } from 'antd'
+import { useRouter } from 'next/navigation'
+import { Avatar, Dropdown, Button, Space, message } from 'antd'
 import type { MenuProps } from 'antd'
 import {
-  HomeOutlined,
-  MessageOutlined,
-  CheckSquareOutlined,
-  CalculatorOutlined,
   LoginOutlined,
   UserAddOutlined,
   UserOutlined,
@@ -26,7 +22,6 @@ interface User {
 }
 
 const Navbar = () => {
-  const pathname = usePathname()
   const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
@@ -106,35 +101,15 @@ const Navbar = () => {
     },
   ]
 
-  const navItems = [
-    {
-      key: '/',
-      icon: <HomeOutlined />,
-      label: <Link href="/">Home</Link>,
-    },
-    {
-      key: '/chat',
-      icon: <MessageOutlined />,
-      label: <Link href="/chat">AI Assistant</Link>,
-    },
-    {
-      key: '/checklist',
-      icon: <CheckSquareOutlined />,
-      label: <Link href="/checklist">Checklist</Link>,
-    },
-    {
-      key: '/calculator',
-      icon: <CalculatorOutlined />,
-      label: <Link href="/calculator">Calculator</Link>,
-    },
-  ]
-
   return (
     <nav
       style={{
-        position: 'sticky',
+        position: 'fixed',
         top: 0,
-        zIndex: 1000,
+        left: 0,
+        right: 0,
+        height: 64,
+        zIndex: 1001,
         background: 'rgba(255, 255, 255, 0.95)',
         backdropFilter: 'blur(10px)',
         borderBottom: '1px solid #f0f0f0',
@@ -143,7 +118,8 @@ const Navbar = () => {
     >
       <div
         style={{
-          maxWidth: 1400,
+          maxWidth: '100%',
+          height: '100%',
           margin: '0 auto',
           padding: '0 24px',
           display: 'flex',
@@ -175,22 +151,8 @@ const Navbar = () => {
           </div>
         </Link>
 
-        {/* Navigation Menu */}
-        <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-          <Menu
-            mode="horizontal"
-            selectedKeys={[pathname]}
-            items={navItems}
-            style={{
-              border: 'none',
-              background: 'transparent',
-              minWidth: 400,
-            }}
-          />
-        </div>
-
         {/* Right side - Login/Register or User Avatar */}
-        <div>
+        <div style={{ marginLeft: 'auto' }}>
           {loading ? null : user ? (
             <Dropdown
               menu={{ items: userMenuItems }}

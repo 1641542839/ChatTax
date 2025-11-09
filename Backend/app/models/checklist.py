@@ -19,8 +19,8 @@ class Checklist(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     
-    # Relationship to user (assuming users table exists)
-    # user = relationship("User", back_populates="checklists")
+    # Relationships
+    chat_session = relationship("ChatSession", back_populates="checklist")
     
     def __repr__(self):
         return f"<Checklist(id={self.id}, user_id={self.user_id}, created_at={self.created_at})>"

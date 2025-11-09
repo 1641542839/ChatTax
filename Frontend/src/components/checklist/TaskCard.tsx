@@ -63,25 +63,25 @@ export default function TaskCard({ task }: TaskCardProps) {
   const [isUpdating, setIsUpdating] = useState(false)
 
   const handleToggle = async () => {
-    // 如果有 API 连接，同步到后端
+    // If API connection exists, sync to backend
     if (currentChecklistId) {
       setIsUpdating(true)
       try {
-        // 计算下一个状态
+        // Calculate next status
         let newStatus: TaskStatus
         if (task.status === 'todo') newStatus = 'doing'
         else if (task.status === 'doing') newStatus = 'done'
         else newStatus = 'todo'
 
-        await updateTaskStatusInAPI(task.id, newStatus, 1) // 使用测试用户 ID
-        message.success(`✅ 状态已更新为 ${newStatus}`)
+        await updateTaskStatusInAPI(task.id, newStatus, 1) // Using test user ID
+        message.success(`✅ Status updated to ${newStatus}`)
       } catch (err) {
-        message.error('更新失败，请重试')
+        message.error('Update failed, please try again')
       } finally {
         setIsUpdating(false)
       }
     } else {
-      // 本地模式，直接切换
+      // Local mode, toggle directly
       toggleTaskStatus(task.id)
     }
   }

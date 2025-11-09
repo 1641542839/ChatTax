@@ -23,11 +23,11 @@ export interface Task {
 interface ChecklistState {
   tasks: Task[]
   filter: TaskStatus | 'all'
-  currentChecklistId: number | null // 当前加载的清单 ID
+  currentChecklistId: number | null // Currently loaded checklist ID
   isLoading: boolean
   error: string | null
 
-  // 本地操作 Actions
+  // Local operation Actions
   addTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => void
   updateTask: (id: string, updates: Partial<Task>) => void
   deleteTask: (id: string) => void
@@ -36,7 +36,7 @@ interface ChecklistState {
   getFilteredTasks: () => Task[]
   initializeDefaultTasks: () => void
 
-  // API 集成 Actions
+  // API integration Actions
   generateChecklistFromAPI: (
     userId: number,
     identityInfo: ChecklistIdentityInfo
@@ -125,7 +125,7 @@ export const useChecklistStore = create<ChecklistState>((set, get) => ({
   isLoading: false,
   error: null,
 
-  // ==================== 本地操作 ====================
+  // ==================== Local Operations ====================
 
   addTask: (task) => {
     const newTask: Task = {
@@ -193,10 +193,10 @@ export const useChecklistStore = create<ChecklistState>((set, get) => ({
     }
   },
 
-  // ==================== API 集成 ====================
+  // ==================== API Integration ====================
 
   /**
-   * 从 API 生成新的个性化清单
+   * Generate new personalized checklist from API
    */
   generateChecklistFromAPI: async (userId, identityInfo) => {
     set({ isLoading: true, error: null })
@@ -206,7 +206,7 @@ export const useChecklistStore = create<ChecklistState>((set, get) => ({
         identity_info: identityInfo,
       })
 
-      // 转换后端数据为前端格式
+      // Convert backend data to frontend format
       const tasks: Task[] = response.items.map((item) => ({
         id: item.id,
         title: item.title,
@@ -233,7 +233,7 @@ export const useChecklistStore = create<ChecklistState>((set, get) => ({
   },
 
   /**
-   * 从 API 加载指定的清单
+   * Load specific checklist from API
    */
   loadChecklistFromAPI: async (checklistId, userId) => {
     set({ isLoading: true, error: null })
@@ -266,7 +266,7 @@ export const useChecklistStore = create<ChecklistState>((set, get) => ({
   },
 
   /**
-   * 加载用户的所有清单（取最新的一个）
+   * Load all user checklists (use the latest one)
    */
   loadUserChecklistsFromAPI: async (userId) => {
     set({ isLoading: true, error: null })
@@ -278,7 +278,7 @@ export const useChecklistStore = create<ChecklistState>((set, get) => ({
         return
       }
 
-      // 使用最新的清单
+      // Use the latest checklist
       const latestChecklist = checklists[checklists.length - 1]
       const tasks: Task[] = latestChecklist.items.map((item) => ({
         id: item.id,
@@ -307,7 +307,7 @@ export const useChecklistStore = create<ChecklistState>((set, get) => ({
   },
 
   /**
-   * 更新任务状态并同步到后端
+   * Update task status and sync to backend
    */
   updateTaskStatusInAPI: async (itemId, newStatus, userId) => {
     const { currentChecklistId } = get()
@@ -315,7 +315,7 @@ export const useChecklistStore = create<ChecklistState>((set, get) => ({
       throw new Error('No checklist loaded')
     }
 
-    // 先更新本地状态（乐观更新）
+    // Update local state first (optimistic update)
     set((state) => ({
       tasks: state.tasks.map((task) =>
         task.id === itemId
@@ -325,25 +325,25 @@ export const useChecklistStore = create<ChecklistState>((set, get) => ({
     }))
 
     try {
-      // 同步到后端
+      // Sync to backend
       await checklistService.updateItemStatus(currentChecklistId, userId, {
         item_id: itemId,
         status: newStatus,
       })
     } catch (error) {
-      // 如果失败，回滚本地状态
+      // If failed, rollback local state
       set((state) => ({
         error:
           error instanceof Error ? error.message : 'Failed to update task status',
       }))
-      // 重新加载以恢复正确状态
+      // Reload to restore correct state
       await get().loadChecklistFromAPI(currentChecklistId, userId)
       throw error
     }
   },
 
   /**
-   * 删除当前清单
+   * Delete current checklist
    */
   deleteChecklistFromAPI: async (userId) => {
     const { currentChecklistId } = get()

@@ -3,6 +3,7 @@ User model for database.
 """
 from sqlalchemy import Boolean, Column, Integer, String, DateTime
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
 from app.db.database import Base
 
 
@@ -28,3 +29,6 @@ class User(Base):
     updated_at = Column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+    
+    # Relationships
+    chat_sessions = relationship("ChatSession", back_populates="user")

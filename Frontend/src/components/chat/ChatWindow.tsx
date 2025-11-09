@@ -23,24 +23,24 @@ export default function ChatWindow() {
 
   const currentConversation = getCurrentConversation()
 
-  // 检查是否有待发送的问题（来自 Checklist）
+  // Check if there's a pending question to send (from Checklist)
   useEffect(() => {
     const pendingQuestion = localStorage.getItem('pendingQuestion')
     if (pendingQuestion) {
-      // 清除 localStorage
+      // Clear localStorage
       localStorage.removeItem('pendingQuestion')
       
-      // 设置输入框内容
+      // Set input content
       setInput(pendingQuestion)
       
-      // 延迟自动发送（让用户看到问题）
+      // Delay auto-send (let user see the question)
       setTimeout(() => {
         handleSendPendingQuestion(pendingQuestion)
       }, 500)
     }
   }, [])
 
-  // 自动发送待定问题
+  // Auto-send pending question
   const handleSendPendingQuestion = async (question: string) => {
     if (!question.trim()) return
 

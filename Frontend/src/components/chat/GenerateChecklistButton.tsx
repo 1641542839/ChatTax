@@ -21,7 +21,7 @@ export default function GenerateChecklistButton({
   const { generateChecklistFromAPI, isLoading } = useChecklistStore()
   const [showModal, setShowModal] = useState(false)
 
-  // 从对话历史中提取用户信息
+  // Extract user information from conversation history
   const extractIdentityFromChat = () => {
     const allText = messages
       .filter((m) => m.role === 'user')
@@ -31,12 +31,12 @@ export default function GenerateChecklistButton({
 
     let employmentStatus: 'employed' | 'self_employed' | 'unemployed' | 'retired' = 'employed'
 
-    // 检测就业状态
-    if (allText.includes('自雇') || allText.includes('自由职业') || allText.includes('个体')) {
+    // Detect employment status
+    if (allText.includes('self-employed') || allText.includes('contractor') || allText.includes('sole trader') || allText.includes('freelance')) {
       employmentStatus = 'self_employed'
-    } else if (allText.includes('退休')) {
+    } else if (allText.includes('retired') || allText.includes('retirement') || allText.includes('pension')) {
       employmentStatus = 'retired'
-    } else if (allText.includes('失业') || allText.includes('无业')) {
+    } else if (allText.includes('unemployed') || allText.includes('jobless') || allText.includes('between jobs')) {
       employmentStatus = 'unemployed'
     }
 
@@ -50,58 +50,62 @@ export default function GenerateChecklistButton({
       additional_info: {} as Record<string, any>,
     }
 
-    // 检测收入来源
+    // Detect income sources
     if (
-      allText.includes('工资') ||
-      allText.includes('上班') ||
-      allText.includes('员工')
+      allText.includes('salary') ||
+      allText.includes('wage') ||
+      allText.includes('payg') ||
+      allText.includes('employee')
     ) {
       identityInfo.income_sources.push('salary')
     }
     if (
-      allText.includes('投资') ||
-      allText.includes('股票') ||
-      allText.includes('基金')
+      allText.includes('investment') ||
+      allText.includes('shares') ||
+      allText.includes('stocks') ||
+      allText.includes('dividend') ||
+      allText.includes('capital gain')
     ) {
       identityInfo.income_sources.push('investment')
       identityInfo.has_investment = true
     }
-    if (allText.includes('租金') || allText.includes('出租') || allText.includes('房产')) {
+    if (allText.includes('rental') || allText.includes('property') || allText.includes('landlord') || allText.includes('rent income')) {
       identityInfo.income_sources.push('rental')
       identityInfo.has_rental_property = true
     }
 
-    // 如果没有检测到任何收入来源，默认添加工资
+    // If no income source detected, default to salary
     if (identityInfo.income_sources.length === 0) {
       identityInfo.income_sources.push('salary')
     }
 
-    // 检测其他信息
+    // Detect other information
     identityInfo.has_dependents =
-      allText.includes('孩子') ||
-      allText.includes('小孩') ||
-      allText.includes('子女') ||
-      allText.includes('抚养')
+      allText.includes('child') ||
+      allText.includes('children') ||
+      allText.includes('kids') ||
+      allText.includes('dependent')
 
     identityInfo.is_first_time_filer =
-      allText.includes('第一次') ||
-      allText.includes('首次') ||
-      allText.includes('从未报税')
+      allText.includes('first time') ||
+      allText.includes('never filed') ||
+      allText.includes('never lodged')
 
-    // 检测行业
-    if (allText.includes('程序员') || allText.includes('IT') || allText.includes('科技')) {
+    // Detect industry
+    if (allText.includes('programmer') || allText.includes('developer') || allText.includes('IT') || allText.includes('tech')) {
       identityInfo.additional_info.industry = 'technology'
-    } else if (allText.includes('医生') || allText.includes('护士') || allText.includes('医疗')) {
+    } else if (allText.includes('doctor') || allText.includes('nurse') || allText.includes('medical') || allText.includes('healthcare')) {
       identityInfo.additional_info.industry = 'healthcare'
-    } else if (allText.includes('老师') || allText.includes('教育')) {
+    } else if (allText.includes('teacher') || allText.includes('education') || allText.includes('tutor')) {
       identityInfo.additional_info.industry = 'education'
     }
 
-    // 检测家庭办公室
+    // Detect home office
     identityInfo.additional_info.has_home_office =
-      allText.includes('在家办公') ||
-      allText.includes('家庭办公') ||
-      allText.includes('远程工作')
+      allText.includes('work from home') ||
+      allText.includes('home office') ||
+      allText.includes('remote work') ||
+      allText.includes('wfh')
 
     return createIdentityInfo(identityInfo.employment_status, {
       incomeSources: identityInfo.income_sources,

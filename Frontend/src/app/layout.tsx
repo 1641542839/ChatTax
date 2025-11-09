@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import { AntdRegistry } from '@ant-design/nextjs-registry'
 import { ConfigProvider } from 'antd'
 import Navbar from '@/components/layout/Navbar'
+import MainLayout from '@/components/layout/MainLayout'
 import ReactQueryProvider from '@/components/providers/ReactQueryProvider'
 import './globals.css'
 
@@ -33,7 +34,7 @@ export default function RootLayout({
             >
               <div className="flex min-h-screen flex-col">
                 <Navbar />
-                <main className="flex-1">{children}</main>
+                <MainLayout>{children}</MainLayout>
               </div>
             </ConfigProvider>
           </AntdRegistry>

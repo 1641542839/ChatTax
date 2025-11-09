@@ -18,7 +18,9 @@ from app.schemas.schemas import (
     ChecklistResponse,
     ChecklistUpdateRequest
 )
-from app.services.checklist_service import ChecklistService
+from app.services.checklist_service import ChecklistService, GenerationMode
+from app.models.user import User
+from app.api.dependencies import get_current_user
 
 # Create router with prefix and tags
 router = APIRouter(
@@ -42,42 +44,71 @@ def get_checklist_service(db: Session = Depends(get_db)) -> ChecklistService:
     description="""
     Generate a personalized tax preparation checklist based on user's identity information.
     
-    The checklist is tailored to the user's:
-    - Employment status
-    - Income sources
-    - Dependents
-    - Investments
-    - Rental properties
-    - First-time filer status
+    Supports three generation modes (Path 1, 2, 3):
+    - form: Quick form-based generation (default)
+    - guided_chat: From guided conversation (requires session_id)
+    - free_chat: From free conversation (requires session_id)
     
-    Returns a checklist with items categorized as todo/doing/done.
+    The checklist is tailored to the user's tax situation.
     """
 )
 async def generate_checklist(
     request: ChecklistGenerateRequest,
+    generation_mode: GenerationMode = GenerationMode.FORM,
+    session_id: str = None,
+    current_user: User = Depends(get_current_user),
     checklist_service: ChecklistService = Depends(get_checklist_service)
 ) -> ChecklistResponse:
     """
     Generate and save a personalized tax checklist.
     
-    Follows Single Responsibility Principle - only handles HTTP layer.
+    Follows Open/Closed Principle - extended to support multiple modes
+    without breaking existing functionality.
     
     Args:
-        request: Checklist generation request with user_id and identity_info
+        request: Checklist generation request with identity_info
+        generation_mode: How checklist is generated (form/guided_chat/free_chat)
+        session_id: Required for guided_chat and free_chat modes
+        current_user: Authenticated user (injected)
         checklist_service: Checklist service (injected)
         
     Returns:
         ChecklistResponse with generated checklist items
         
     Raises:
-        HTTPException: If generation fails
+        HTTPException: If generation fails or parameters invalid
     """
     try:
-        checklist = await checklist_service.generate_and_save_checklist(
-            user_id=request.user_id,
-            identity_info=request.identity_info
-        )
+        # Validate parameters for chat-based modes
+        if generation_mode in [GenerationMode.GUIDED_CHAT, GenerationMode.FREE_CHAT]:
+            if not session_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"session_id is required for {generation_mode} mode"
+                )
+            
+            # Generate from conversation
+            checklist = await checklist_service.generate_from_conversation(
+                user_id=current_user.id,
+                session_id=session_id,
+                generation_mode=generation_mode
+            )
+        else:
+            # Form-based generation (Path 1)
+            checklist = await checklist_service.generate_and_save_checklist(
+                user_id=current_user.id,
+                identity_info=request.identity_info,
+                generation_mode=generation_mode,
+                session_id=session_id
+            )
+        
         return checklist
+        
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
