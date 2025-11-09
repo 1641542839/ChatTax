@@ -41,7 +41,13 @@ export default function LoginPage() {
       });
 
       if (!response.ok) {
-        throw new Error('Login failed');
+        // Try to surface backend error details (e.g., OAuth-only account message)
+        let serverMsg = 'Login failed';
+        try {
+          const errBody = await response.json();
+          if (errBody?.detail) serverMsg = errBody.detail;
+        } catch {}
+        throw new Error(serverMsg);
       }
 
       const data = await response.json();
@@ -52,21 +58,13 @@ export default function LoginPage() {
         localStorage.setItem('refresh_token', data.refresh_token);
       }
 
-      message.success('Login successful!');
-      router.push('/');
-      // Refresh to update navbar
-      window.location.reload();
-    } catch (error) {
+      // Redirect immediately to home page
+      window.location.href = '/';
+    } catch (error: any) {
       console.error('Login error:', error);
-      message.error('Invalid email or password');
-    } finally {
+      message.error(error?.message || 'Invalid email or password');
       setLoading(false);
     }
-  };
-
-  const handleGoogleSuccess = () => {
-    // GoogleLoginButton will redirect to home page
-    console.log('Google login successful');
   };
 
   const handleGoogleError = (error: Error) => {
@@ -105,7 +103,6 @@ export default function LoginPage() {
         {/* Google Login Button */}
         <div style={{ marginBottom: 24 }}>
           <GoogleLoginButton
-            onSuccess={handleGoogleSuccess}
             onError={handleGoogleError}
           />
         </div>

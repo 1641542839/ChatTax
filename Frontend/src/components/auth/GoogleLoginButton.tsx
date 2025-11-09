@@ -57,14 +57,11 @@ export function GoogleLoginButton({ onSuccess, onError }: GoogleLoginButtonProps
       // Get user info
       // Note: You might want to fetch user details from /api/auth/me
       
-      message.success('Successfully logged in with Google!');
-      
       if (onSuccess) {
         onSuccess();
       } else {
-        router.push('/');
-        // Refresh to update navbar
-        window.location.reload();
+        // Redirect immediately to home page
+        window.location.href = '/';
       }
     } catch (error) {
       console.error('Google login error:', error);

@@ -93,14 +93,11 @@ class AuthService:
 
     @staticmethod
     def authenticate_user(
-        db: Session, username: str, password: str
+        db: Session, email: str, password: str
     ) -> Optional[User]:
-        """Authenticate user with username and password."""
-        # Try username first
-        user = AuthService.get_user_by_username(db, username)
-        # If not found, treat input as potential email
-        if not user:
-            user = AuthService.get_user_by_email(db, username)
+        """Authenticate user with email and password (email only, no username)."""
+        # Only look up by email
+        user = AuthService.get_user_by_email(db, email)
         if not user:
             return None
         # Disallow password login for OAuth-only accounts (no hashed password)

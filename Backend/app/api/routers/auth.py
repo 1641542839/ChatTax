@@ -73,8 +73,20 @@ async def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
 ):
-    """Login and get access token."""
-    user = AuthService.authenticate_user(db, form_data.username, form_data.password)
+    """Login and get access token (email + password only)."""
+    # form_data.username actually contains the email (frontend sends email in username field)
+    email = form_data.username
+    
+    # First, detect if this is an OAuth-only account (no password set)
+    candidate = AuthService.get_user_by_email(db, email)
+    if candidate and not candidate.hashed_password:
+        # Explicit message for accounts created via Google OAuth
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This account was created with Google Sign-In. Please sign in with Google.",
+        )
+
+    user = AuthService.authenticate_user(db, email, form_data.password)
 
     if not user:
         raise HTTPException(

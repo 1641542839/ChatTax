@@ -57,10 +57,6 @@ export default function RegisterPage() {
     }
   };
 
-  const handleGoogleSuccess = () => {
-    console.log('Google registration successful');
-  };
-
   const handleGoogleError = (error: Error) => {
     console.error('Google registration error:', error);
     message.error('Google registration failed. Please try again.');
@@ -97,7 +93,6 @@ export default function RegisterPage() {
         {/* Google Sign Up Button */}
         <div style={{ marginBottom: 24 }}>
           <GoogleLoginButton
-            onSuccess={handleGoogleSuccess}
             onError={handleGoogleError}
           />
         </div>
