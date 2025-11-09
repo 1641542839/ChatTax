@@ -1,19 +1,112 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { Menu } from 'antd'
+import { usePathname, useRouter } from 'next/navigation'
+import { Menu, Avatar, Dropdown, Button, Space, message } from 'antd'
+import type { MenuProps } from 'antd'
 import {
   HomeOutlined,
   MessageOutlined,
   CheckSquareOutlined,
   CalculatorOutlined,
+  LoginOutlined,
+  UserAddOutlined,
+  UserOutlined,
+  LogoutOutlined,
+  SettingOutlined,
 } from '@ant-design/icons'
+
+interface User {
+  id: string
+  username: string
+  email: string
+  full_name?: string
+  avatar_url?: string
+}
 
 const Navbar = () => {
   const pathname = usePathname()
+  const router = useRouter()
+  const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  const menuItems = [
+  useEffect(() => {
+    // Check if user is logged in
+    const token = localStorage.getItem('access_token')
+    if (token) {
+      fetchUserInfo(token)
+    } else {
+      setLoading(false)
+    }
+  }, [])
+
+  const fetchUserInfo = async (token: string) => {
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/auth/me`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
+
+      if (response.ok) {
+        const userData = await response.json()
+        setUser(userData)
+      } else {
+        // Token invalid, clear it
+        localStorage.removeItem('access_token')
+        localStorage.removeItem('refresh_token')
+      }
+    } catch (error) {
+      console.error('Failed to fetch user info:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleLogout = () => {
+    localStorage.removeItem('access_token')
+    localStorage.removeItem('refresh_token')
+    setUser(null)
+    message.success('Logged out successfully')
+    router.push('/')
+  }
+
+  const userMenuItems: MenuProps['items'] = [
+    {
+      key: 'profile',
+      icon: <UserOutlined />,
+      label: (
+        <div>
+          <div style={{ fontWeight: 500 }}>
+            {user?.full_name || user?.username}
+          </div>
+          <div style={{ fontSize: 12, color: '#666' }}>{user?.email}</div>
+        </div>
+      ),
+    },
+    {
+      type: 'divider',
+    },
+    {
+      key: 'settings',
+      icon: <SettingOutlined />,
+      label: 'Settings',
+      onClick: () => router.push('/settings'),
+    },
+    {
+      key: 'logout',
+      icon: <LogoutOutlined />,
+      label: 'Logout',
+      onClick: handleLogout,
+      danger: true,
+    },
+  ]
+
+  const navItems = [
     {
       key: '/',
       icon: <HomeOutlined />,
@@ -27,33 +120,128 @@ const Navbar = () => {
     {
       key: '/checklist',
       icon: <CheckSquareOutlined />,
-      label: <Link href="/checklist">Tax Checklist</Link>,
+      label: <Link href="/checklist">Checklist</Link>,
     },
     {
       key: '/calculator',
       icon: <CalculatorOutlined />,
-      label: <Link href="/calculator">Tax Calculator</Link>,
+      label: <Link href="/calculator">Calculator</Link>,
     },
   ]
 
   return (
-    <nav className="border-b bg-white shadow-sm">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between">
-          <Link
-            href="/"
-            className="flex items-center py-4 text-2xl font-bold text-primary-600"
+    <nav
+      style={{
+        position: 'sticky',
+        top: 0,
+        zIndex: 1000,
+        background: 'rgba(255, 255, 255, 0.95)',
+        backdropFilter: 'blur(10px)',
+        borderBottom: '1px solid #f0f0f0',
+        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+      }}
+    >
+      <div
+        style={{
+          maxWidth: 1400,
+          margin: '0 auto',
+          padding: '0 24px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        {/* Logo */}
+        <Link
+          href="/"
+          style={{
+            textDecoration: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            padding: '12px 0',
+          }}
+        >
+          <div
+            style={{
+              fontSize: 24,
+              fontWeight: 700,
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              letterSpacing: '-0.5px',
+            }}
           >
-            <span className="mr-2 text-3xl">💼</span>
             ChatTax
-          </Link>
+          </div>
+        </Link>
+
+        {/* Navigation Menu */}
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
           <Menu
             mode="horizontal"
             selectedKeys={[pathname]}
-            items={menuItems}
-            className="flex-1 justify-end border-0"
-            style={{ minWidth: 0 }}
+            items={navItems}
+            style={{
+              border: 'none',
+              background: 'transparent',
+              minWidth: 400,
+            }}
           />
+        </div>
+
+        {/* Right side - Login/Register or User Avatar */}
+        <div>
+          {loading ? null : user ? (
+            <Dropdown
+              menu={{ items: userMenuItems }}
+              placement="bottomRight"
+              arrow
+            >
+              <Avatar
+                size={40}
+                src={user.avatar_url}
+                icon={!user.avatar_url && <UserOutlined />}
+                style={{
+                  cursor: 'pointer',
+                  backgroundColor: user.avatar_url ? undefined : '#667eea',
+                  border: '2px solid #f0f0f0',
+                }}
+              />
+            </Dropdown>
+          ) : (
+            <Space size="middle">
+              <Link href="/login">
+                <Button
+                  type="text"
+                  icon={<LoginOutlined />}
+                  size="large"
+                  style={{
+                    color: '#666',
+                    fontWeight: 500,
+                  }}
+                >
+                  Login
+                </Button>
+              </Link>
+              <Link href="/register">
+                <Button
+                  type="primary"
+                  icon={<UserAddOutlined />}
+                  size="large"
+                  style={{
+                    background:
+                      'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    border: 'none',
+                    borderRadius: 8,
+                    fontWeight: 500,
+                    boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
+                  }}
+                >
+                  Sign Up
+                </Button>
+              </Link>
+            </Space>
+          )}
         </div>
       </div>
     </nav>
