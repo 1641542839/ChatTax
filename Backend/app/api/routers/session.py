@@ -56,6 +56,7 @@ class SessionDetailResponse(SessionResponse):
     conversation_history: List[dict]
     extracted_identity: Optional[dict]
     identity_completion: Optional[dict]
+    completion_percentage: int = 0  # 0-100, calculated from extracted_identity
     
     class Config:
         from_attributes = True
@@ -164,17 +165,25 @@ def get_session(
             detail="Session not found"
         )
     
-    # Calculate identity completion if there's conversation history
+    # Calculate identity completion if there's extracted_identity
     identity_completion = None
-    if session.conversation_history and len(session.conversation_history) > 0:
-        extraction_result = IdentityExtractorService.extract_identity_from_conversation(
-            session.conversation_history
-        )
-        identity_completion = {
-            "completion_percentage": extraction_result["completion_percentage"],
-            "missing_fields": extraction_result["missing_fields"],
-            "is_complete": extraction_result["is_complete"]
-        }
+    completion_percentage = 0
+    
+    if session.extracted_identity:
+        from app.services.identity_extraction_service import get_identity_extraction_service
+        from app.schemas.schemas import ChecklistIdentityInfo
+        
+        try:
+            extraction_service = get_identity_extraction_service()
+            identity_info = ChecklistIdentityInfo(**session.extracted_identity)
+            completion_percentage = extraction_service._calculate_completion(identity_info)
+            
+            identity_completion = {
+                "completion_percentage": completion_percentage,
+                "can_generate_checklist": completion_percentage >= 60
+            }
+        except Exception as e:
+            print(f"[session.py] Error calculating completion: {e}")
     
     return SessionDetailResponse(
         id=session.id,
@@ -187,6 +196,7 @@ def get_session(
         conversation_history=session.conversation_history or [],
         extracted_identity=session.extracted_identity,
         identity_completion=identity_completion,
+        completion_percentage=completion_percentage,
         created_at=session.created_at.isoformat() if session.created_at else "",
         updated_at=session.updated_at.isoformat() if session.updated_at else ""
     )

@@ -39,12 +39,28 @@ Guidelines:
 10. Use Australian terminology (e.g., "tax return" not "tax filing", "ATO" not "IRS", "myGov" not "online account")
 11. Reference Australian financial years (e.g., 2023-24) when relevant
 
+PROACTIVE INFORMATION GATHERING:
+After answering the user's question, naturally ask 1-2 follow-up questions to understand their tax situation better. Focus on:
+- Employment status (employed, self-employed, retired, unemployed)
+- Income sources (salary, business, rental, investment, pension)
+- Family situation (dependents, children)
+- Assets (investments, rental properties)
+- Filing experience (first time or returning filer)
+
+Examples of natural follow-up questions:
+- "By the way, are you employed or self-employed? This helps me give you more relevant advice."
+- "Do you have any children or dependents? There may be tax benefits available."
+- "Do you earn income from investments or rental properties?"
+- "Is this your first time filing an Australian tax return?"
+
+Keep follow-ups conversational and relevant to their question.
+
 CRITICAL: 
 - This system is ONLY for INDIVIDUAL PERSONAL tax returns
 - Do NOT provide business tax advice
 - Only use information from the SOURCE DOCUMENTS provided below
 - Do NOT include [Source 1], [Source 2] or any citation markers in your answer
-- Do NOT include any URLs or links in your answer text
+- DO NOT include any URLs or links in your answer text
 - Write naturally without reference marks
 - The source citations will be added separately after your answer"""),
             ("human", """Question: {question}
@@ -117,6 +133,43 @@ Remember: The sources will be listed separately after your answer, so do not inc
         async for chunk in self.llm.astream(messages):
             if chunk.content:
                 yield chunk.content
+
+    async def generate_response(
+        self,
+        prompt: str,
+        temperature: float = 0.3,
+        max_tokens: int = 800
+    ) -> str:
+        """
+        Generate a simple response from a prompt without RAG context.
+        
+        Used for tasks like identity extraction that don't require document retrieval.
+        
+        Args:
+            prompt: The prompt text to send to the LLM
+            temperature: Controls randomness (0.0-1.0, lower = more deterministic)
+            max_tokens: Maximum tokens in the response
+            
+        Returns:
+            str: The LLM's response text
+        """
+        # Create a temporary LLM instance with specified parameters
+        temp_llm = ChatOpenAI(
+            model="gpt-4o-mini",
+            temperature=temperature,
+            max_tokens=max_tokens,
+            openai_api_key=settings.openai_api_key,
+        )
+        
+        # Create simple message
+        messages = [
+            ("system", "You are a helpful AI assistant."),
+            ("human", prompt)
+        ]
+        
+        # Get response
+        response = await temp_llm.ainvoke(messages)
+        return response.content
 
     def generate_answer(
         self,

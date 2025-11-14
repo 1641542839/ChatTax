@@ -64,6 +64,12 @@ export const sessionService = {
    */
   async getSession(sessionId: string): Promise<ChatSession> {
     const response = await apiClient<ChatSession>(`${SESSION_BASE}/${sessionId}`);
+    console.log('[sessionService] getSession response:', {
+      session_id: response.session_id,
+      completion_percentage: response.completion_percentage,
+      extracted_identity: response.extracted_identity,
+      message_count: response.conversation_history?.length
+    });
     return response;
   },
 
@@ -151,6 +157,26 @@ export const sessionService = {
     
     // Check if completion percentage is high enough (e.g., >= 60%)
     return (identity.completion_percentage || 0) >= 60;
+  },
+
+  /**
+   * Generate checklist from session conversation
+   */
+  async generateChecklistFromSession(sessionId: string): Promise<any> {
+    const response = await apiClient<any>(`/api/checklist/generate-from-session?session_id=${sessionId}`, {
+      method: 'POST',
+    });
+    return response;
+  },
+
+  /**
+   * Regenerate an existing checklist with updated identity information
+   */
+  async regenerateChecklist(checklistId: string): Promise<any> {
+    const response = await apiClient<any>(`/api/checklist/${checklistId}/regenerate`, {
+      method: 'PUT',
+    });
+    return response;
   },
 };
 

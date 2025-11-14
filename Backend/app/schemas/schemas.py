@@ -159,13 +159,18 @@ class ChecklistIdentityInfo(BaseModel):
     """
     Schema for user's identity information used to generate personalized checklist.
     Follows Single Responsibility Principle - only validates identity data structure.
+    
+    Note: Boolean fields use Optional[bool] to distinguish between:
+    - None: Information not asked/mentioned (no score)
+    - True: Explicitly confirmed (score counted)
+    - False: Explicitly denied (score counted)
     """
     employment_status: str = Field(..., description="Employment status (e.g., employed, self-employed, unemployed)")
     income_sources: List[str] = Field(..., description="List of income sources (e.g., salary, rental, investment)")
-    has_dependents: bool = Field(..., description="Whether user has dependents")
-    has_investment: bool = Field(..., description="Whether user has investments")
-    has_rental_property: bool = Field(..., description="Whether user has rental properties")
-    is_first_time_filer: bool = Field(default=False, description="Whether this is first time filing")
+    has_dependents: Optional[bool] = Field(default=None, description="Whether user has dependents (None if not asked)")
+    has_investment: Optional[bool] = Field(default=None, description="Whether user has investments (None if not asked)")
+    has_rental_property: Optional[bool] = Field(default=None, description="Whether user has rental properties (None if not asked)")
+    is_first_time_filer: Optional[bool] = Field(default=None, description="Whether this is first time filing (None if not asked)")
     additional_info: Optional[Dict[str, Any]] = Field(default=None, description="Any additional contextual information")
 
     class Config:

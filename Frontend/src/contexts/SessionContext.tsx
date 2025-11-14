@@ -32,6 +32,10 @@ interface SessionContextValue {
   missingFields: string[];
   /** Whether session has enough info for checklist generation */
   canGenerateChecklist: boolean;
+  /** Whether session has a linked checklist */
+  hasChecklist: boolean;
+  /** ID of linked checklist if exists */
+  checklistId: string | null;
   /** Create a new session */
   createSession: (initialMessage?: string) => Promise<ChatSession | null>;
   /** Load an existing session */
@@ -42,6 +46,10 @@ interface SessionContextValue {
   clearSession: () => void;
   /** Link checklist to current session */
   linkChecklist: (checklistId: string) => Promise<void>;
+  /** Generate checklist from current session conversation */
+  generateChecklist: () => Promise<any>;
+  /** Regenerate existing checklist with updated information */
+  regenerateChecklist: () => Promise<any>;
 }
 
 const SessionContext = createContext<SessionContextValue | undefined>(undefined);

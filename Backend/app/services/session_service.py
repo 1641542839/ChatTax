@@ -35,11 +35,27 @@ class SessionService:
         """
         session_id = str(uuid.uuid4())
         
+        # Create welcome message to guide users
+        welcome_message = {
+            "role": "assistant",
+            "content": """G'day! I'm your Australian tax assistant. I can help you understand tax rules and prepare for your tax return.
+
+To give you the most relevant advice and eventually create a personalized checklist, I'd like to know a bit about your situation:
+
+• Are you **employed, self-employed, retired, or unemployed**?
+• What types of **income** do you earn? (salary, business, rental, investments, pension)
+• Do you have any **children or dependents**?
+• Do you own any **investments or rental properties**?
+
+Feel free to ask any tax questions, and share your details whenever you're comfortable. The more I know, the better I can help!""",
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
         new_session = ChatSession(
             session_id=session_id,
             user_id=user_id,
             title=title or "新对话",
-            conversation_history=[],
+            conversation_history=[welcome_message],
             is_active=True
         )
         

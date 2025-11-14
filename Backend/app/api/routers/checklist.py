@@ -256,3 +256,187 @@ async def delete_checklist(
         )
     
     return None
+
+
+@router.post(
+    "/generate-from-session",
+    response_model=ChecklistResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Generate checklist from chat session",
+    description="""
+    Generate a personalized checklist from an existing chat session's extracted identity.
+    
+    This endpoint analyzes the conversation history in the specified session and generates
+    a tailored tax preparation checklist based on the information gathered during the chat.
+    
+    Requirements:
+    - Session must belong to the current user
+    - Session must have sufficient information (completion >= 60%)
+    - Checklist must not already exist for this session
+    """
+)
+async def generate_checklist_from_session(
+    session_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    checklist_service: ChecklistService = Depends(get_checklist_service)
+) -> ChecklistResponse:
+    """
+    Generate checklist from chat session's extracted identity information.
+    
+    Business logic:
+    1. Validate session ownership
+    2. Check if checklist already exists
+    3. Verify extracted_identity has sufficient information
+    4. Generate checklist using LLM
+    5. Link checklist to session
+    
+    Args:
+        session_id: UUID of the chat session
+        current_user: Authenticated user (injected)
+        db: Database session (injected)
+        checklist_service: Checklist service (injected)
+        
+    Returns:
+        ChecklistResponse with generated checklist
+        
+    Raises:
+        HTTPException 404: Session not found
+        HTTPException 400: Checklist already exists or insufficient information
+    """
+    from app.services.session_service import SessionService
+    from app.schemas.schemas import ChecklistIdentityInfo
+    from app.services.identity_extraction_service import get_identity_extraction_service
+    
+    # Get session
+    session = SessionService.get_session(db, session_id, current_user.id)
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Session not found"
+        )
+    
+    # Check if checklist already exists
+    if session.checklist_generated and session.checklist_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Checklist already exists for this session (ID: {session.checklist_id}). Use regenerate endpoint to update."
+        )
+    
+    # Check if we have extracted identity
+    if not session.extracted_identity:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Not enough information collected. Continue chatting to provide more details about your tax situation."
+        )
+    
+    # Calculate completion percentage
+    extraction_service = get_identity_extraction_service()
+    identity_info = ChecklistIdentityInfo(**session.extracted_identity)
+    completion_pct = extraction_service._calculate_completion(identity_info)
+    
+    if completion_pct < 60:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Insufficient information ({completion_pct}% complete). Please provide more details. Need at least 60%."
+        )
+    
+    # Generate checklist
+    checklist = await checklist_service.generate_and_save_checklist(
+        user_id=current_user.id,
+        identity_info=identity_info
+    )
+    
+    # Link checklist to session
+    session.checklist_id = checklist.id
+    session.checklist_generated = True
+    db.commit()
+    db.refresh(session)
+    
+    print(f"[checklist.py] ✅ Generated checklist {checklist.id} from session {session_id}")
+    
+    return checklist
+
+
+@router.put(
+    "/{checklist_id}/regenerate",
+    response_model=ChecklistResponse,
+    summary="Regenerate checklist",
+    description="""
+    Regenerate an existing checklist with updated information.
+    
+    Can regenerate based on:
+    - Original identity_info (if no session_id provided)
+    - Updated session.extracted_identity (if session_id provided)
+    
+    This is useful when the user provides additional information after initial generation.
+    """
+)
+async def regenerate_checklist(
+    checklist_id: int,
+    session_id: str = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    checklist_service: ChecklistService = Depends(get_checklist_service)
+) -> ChecklistResponse:
+    """
+    Regenerate checklist with updated information.
+    
+    Args:
+        checklist_id: ID of existing checklist
+        session_id: Optional session ID to use updated extracted_identity
+        current_user: Authenticated user (injected)
+        db: Database session (injected)
+        checklist_service: Checklist service (injected)
+        
+    Returns:
+        ChecklistResponse with regenerated checklist
+        
+    Raises:
+        HTTPException 404: Checklist not found
+    """
+    from app.services.session_service import SessionService
+    from app.schemas.schemas import ChecklistIdentityInfo
+    from app.models.checklist import Checklist
+    from datetime import datetime
+    
+    # Get existing checklist
+    existing = checklist_service.get_checklist(checklist_id, current_user.id)
+    if not existing:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Checklist not found"
+        )
+    
+    # Determine which identity_info to use
+    if session_id:
+        session = SessionService.get_session(db, session_id, current_user.id)
+        if session and session.extracted_identity:
+            identity_info = ChecklistIdentityInfo(**session.extracted_identity)
+            print(f"[checklist.py] Using updated identity from session {session_id}")
+        else:
+            identity_info = existing.identity_info
+            print(f"[checklist.py] Session not found or no extracted_identity, using original")
+    else:
+        identity_info = existing.identity_info
+        print(f"[checklist.py] No session provided, using original identity_info")
+    
+    # Regenerate checklist items using LLM
+    from app.services.llm_service import get_llm_service
+    llm_service = get_llm_service()
+    new_items = await llm_service.generate_tax_checklist(identity_info)
+    
+    # Update database
+    checklist_model = db.query(Checklist).filter_by(id=checklist_id, user_id=current_user.id).first()
+    if not checklist_model:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Checklist not found")
+    
+    checklist_model.identity_info = identity_info.model_dump()
+    checklist_model.checklist_json = new_items
+    checklist_model.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(checklist_model)
+    
+    print(f"[checklist.py] ✅ Regenerated checklist {checklist_id} with {len(new_items)} items")
+    
+    return checklist_service._to_response(checklist_model)

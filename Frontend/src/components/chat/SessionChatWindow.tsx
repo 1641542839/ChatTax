@@ -8,10 +8,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Input, Button, Empty, Badge, Tag, Spin } from 'antd';
+import { Input, Button, Empty, Badge, Tag, Spin, message as antdMessage } from 'antd';
 import { SendOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { useSessionContext } from '@/contexts/SessionContext';
-import SmartGenerateButton from './SmartGenerateButton';
+import { SmartGenerateButton } from '@/components/checklist/SmartGenerateButton';
 import { IntentType, type SessionMessage } from '@/types/session';
 
 const { TextArea } = Input;
@@ -71,6 +71,10 @@ export default function SessionChatWindow() {
     error,
     completionPercentage,
     extractedIdentity,
+    canGenerateChecklist,
+    hasChecklist,
+    generateChecklist,
+    regenerateChecklist,
     createSession,
     loadSession,
     sendMessage,
@@ -293,6 +297,32 @@ export default function SessionChatWindow() {
     }
   };
 
+  const handleGenerateChecklist = async () => {
+    try {
+      const result = await generateChecklist();
+      if (result) {
+        antdMessage.success('Checklist生成成功！');
+        // Optionally navigate to checklist view
+        // router.push(`/checklist/${result.id}`);
+      }
+    } catch (err) {
+      antdMessage.error('生成Checklist失败，请重试');
+      console.error('Generate checklist error:', err);
+    }
+  };
+
+  const handleRegenerateChecklist = async () => {
+    try {
+      const result = await regenerateChecklist();
+      if (result) {
+        antdMessage.success('Checklist重新生成成功！');
+      }
+    } catch (err) {
+      antdMessage.error('重新生成Checklist失败，请重试');
+      console.error('Regenerate checklist error:', err);
+    }
+  };
+
   if (error) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -307,31 +337,6 @@ export default function SessionChatWindow() {
 
   return (
     <div className="flex h-full flex-col bg-gradient-to-br from-blue-50 to-indigo-50 relative">
-      {/* Info Bar - Show completion status */}
-      {session && extractedIdentity && (
-        <div className="bg-white border-b px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Badge
-              status={completionPercentage >= 60 ? 'success' : 'processing'}
-              text={
-                <span className="text-sm text-gray-600">
-                  Tax Info Collected: <strong>{completionPercentage}%</strong>
-                </span>
-              }
-            />
-            {extractedIdentity.filing_status && (
-              <Tag color="blue">{extractedIdentity.filing_status}</Tag>
-            )}
-            {extractedIdentity.state && (
-              <Tag color="green">{extractedIdentity.state}</Tag>
-            )}
-          </div>
-          {completionPercentage >= 60 && (
-            <SmartGenerateButton variant="inline" />
-          )}
-        </div>
-      )}
-
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-6">
         {loading && messages.length === 0 ? (
@@ -339,29 +344,27 @@ export default function SessionChatWindow() {
             <Spin size="large" tip="Loading session..." />
           </div>
         ) : messages.length === 0 && !isSending ? (
-          <div className="flex h-full items-center justify-center">
-            <Empty
-              description={
-                <div className="text-center">
-                  <h3 className="mb-2 text-lg font-semibold text-gray-700">
-                    Welcome to ChatTax AI Assistant
-                  </h3>
-                  <p className="text-gray-500">
-                    Start by telling me about your tax situation, and I'll help you
-                    generate a personalized tax checklist.
-                  </p>
-                  <div className="mt-4 text-left inline-block">
-                    <p className="text-sm text-gray-600 mb-2">Try asking:</p>
-                    <ul className="text-sm text-gray-500 space-y-1">
-                      <li>• "I'm married filing jointly with 2 kids"</li>
-                      <li>• "I have freelance income and own rental property"</li>
-                      <li>• "What documents do I need for investment income?"</li>
-                    </ul>
-                  </div>
+          <div className="mx-auto max-w-4xl space-y-4">
+            {/* Welcome message as assistant bubble */}
+            <div className="flex justify-start">
+              <div className="max-w-[70%] rounded-2xl px-4 py-3 bg-white border border-gray-200 text-gray-800">
+                <div className="whitespace-pre-wrap break-words">
+G'day! I'm your Australian tax assistant. I can help you understand tax rules and prepare for your tax return.
+
+To give you the most relevant advice and eventually create a personalized checklist, I'd like to know a bit about your situation:
+
+• Are you **employed, self-employed, retired, or unemployed**?
+• What types of **income** do you earn? (salary, business, rental, investments, pension)
+• Do you have any **children or dependents**?
+• Do you own any **investments or rental properties**?
+
+Feel free to ask any tax questions, and share your details whenever you're comfortable. The more I know, the better I can help!
                 </div>
-              }
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-            />
+                <div className="mt-1 text-xs text-gray-400">
+                  {new Date().toLocaleTimeString()}
+                </div>
+              </div>
+            </div>
           </div>
         ) : (
           <div className="mx-auto max-w-4xl space-y-4">
@@ -438,9 +441,6 @@ export default function SessionChatWindow() {
           </p>
         </div>
       </div>
-
-      {/* Floating Generate Button */}
-      <SmartGenerateButton variant="floating" />
     </div>
   );
 }

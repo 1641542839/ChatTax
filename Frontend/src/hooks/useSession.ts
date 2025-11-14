@@ -32,6 +32,10 @@ interface UseSessionReturn {
   missingFields: string[];
   /** Whether session has enough info for checklist generation */
   canGenerateChecklist: boolean;
+  /** Whether session has a linked checklist */
+  hasChecklist: boolean;
+  /** ID of linked checklist if exists */
+  checklistId: string | null;
   /** Create a new session */
   createSession: (initialMessage?: string) => Promise<ChatSession | null>;
   /** Load an existing session */
@@ -42,6 +46,10 @@ interface UseSessionReturn {
   clearSession: () => void;
   /** Link checklist to current session */
   linkChecklist: (checklistId: string) => Promise<void>;
+  /** Generate checklist from current session conversation */
+  generateChecklist: () => Promise<any>;
+  /** Regenerate existing checklist with updated information */
+  regenerateChecklist: () => Promise<any>;
 }
 
 /**
@@ -94,6 +102,10 @@ export function useSession(autoLoad = false): UseSessionReturn {
   // Check if can generate checklist (completion >= 60%)
   const canGenerateChecklist = completionPercentage >= 60;
 
+  // Check if session has linked checklist
+  const hasChecklist = !!session?.checklist_id;
+  const checklistId = session?.checklist_id || null;
+
   /**
    * Create a new session
    */
@@ -111,7 +123,8 @@ export function useSession(autoLoad = false): UseSessionReturn {
       console.log('[useSession] Session created successfully:', newSession.session_id);
       setSession(newSession);
       setExtractedIdentity(newSession.extracted_identity);
-      setCompletionPercentage(newSession.extracted_identity?.completion_percentage || 0);
+      // Read completion_percentage from top-level session property
+      setCompletionPercentage(newSession.completion_percentage || 0);
       setMissingFields(newSession.extracted_identity?.missing_fields || []);
 
       // Save to localStorage
@@ -139,11 +152,19 @@ export function useSession(autoLoad = false): UseSessionReturn {
 
     try {
       const loadedSession = await sessionService.getSession(sessionId);
-      console.log('[useSession] Session loaded, messages count:', loadedSession.conversation_history?.length);
+      console.log('[useSession] Session loaded:', {
+        session_id: loadedSession.session_id,
+        messages_count: loadedSession.conversation_history?.length,
+        completion_percentage: loadedSession.completion_percentage,
+        has_extracted_identity: !!loadedSession.extracted_identity
+      });
 
       setSession(loadedSession);
       setExtractedIdentity(loadedSession.extracted_identity);
-      setCompletionPercentage(loadedSession.extracted_identity?.completion_percentage || 0);
+      // Read completion_percentage from top-level session property
+      const newCompletionPercentage = loadedSession.completion_percentage || 0;
+      console.log('[useSession] Setting completionPercentage to:', newCompletionPercentage);
+      setCompletionPercentage(newCompletionPercentage);
       setMissingFields(loadedSession.extracted_identity?.missing_fields || []);
 
       // Save to localStorage
@@ -225,6 +246,74 @@ export function useSession(autoLoad = false): UseSessionReturn {
   }, [session]);
 
   /**
+   * Generate checklist from current session conversation
+   */
+  const generateChecklist = useCallback(async () => {
+    if (!session) {
+      setError('No active session');
+      return null;
+    }
+
+    if (!canGenerateChecklist) {
+      setError(`Insufficient information (${completionPercentage}%). Need at least 60%.`);
+      return null;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const result = await sessionService.generateChecklistFromSession(session.session_id);
+      
+      // Reload session to get updated checklist_id
+      await loadSession(session.session_id);
+      
+      return result;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to generate checklist';
+      setError(errorMessage);
+      console.error('Generate checklist error:', err);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, [session, canGenerateChecklist, completionPercentage, loadSession]);
+
+  /**
+   * Regenerate existing checklist with updated information
+   */
+  const regenerateChecklist = useCallback(async () => {
+    if (!session) {
+      setError('No active session');
+      return null;
+    }
+
+    if (!hasChecklist || !checklistId) {
+      setError('No checklist to regenerate');
+      return null;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const result = await sessionService.regenerateChecklist(checklistId);
+      
+      // Reload session to get updated data
+      await loadSession(session.session_id);
+      
+      return result;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to regenerate checklist';
+      setError(errorMessage);
+      console.error('Regenerate checklist error:', err);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, [session, hasChecklist, checklistId, loadSession]);
+
+  /**
    * Clear current session
    */
   const clearSession = useCallback(() => {
@@ -262,11 +351,15 @@ export function useSession(autoLoad = false): UseSessionReturn {
     completionPercentage,
     missingFields,
     canGenerateChecklist,
+    hasChecklist,
+    checklistId,
     createSession,
     loadSession,
     sendMessage,
     clearSession,
     linkChecklist,
+    generateChecklist,
+    regenerateChecklist,
   };
 }
 

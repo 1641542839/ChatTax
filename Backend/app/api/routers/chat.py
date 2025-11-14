@@ -118,6 +118,8 @@ async def chat_stream(
             # Step 4: Save messages to session
             if session_obj and current_user:
                 from datetime import datetime
+                from app.services.identity_extraction_service import get_identity_extraction_service
+                
                 print(f"[chat.py] Saving messages - User: {len(message.content)} chars, Assistant: {len(full_response)} chars")
                 print(f"[chat.py] Current history length: {len(conversation_history)}")
                 
@@ -142,7 +144,33 @@ async def chat_stream(
                 if not session_obj.title or session_obj.title == "新对话":
                     session_obj.title = message.content[:50] + "..." if len(message.content) > 50 else message.content
                 
-                # Commit once for both messages
+                # Step 4.5: Extract identity information (only if checklist not yet generated)
+                if not session_obj.checklist_generated:
+                    print(f"\n[chat.py] ========== IDENTITY EXTRACTION START ==========")
+                    print(f"[chat.py] Session ID: {session_obj.session_id}")
+                    print(f"[chat.py] History length: {len(updated_history)} messages")
+                    print(f"[chat.py] Last message: {updated_history[-1]['content'][:100] if updated_history else 'N/A'}...")
+                    
+                    extraction_service = get_identity_extraction_service()
+                    identity_info, completion_pct = await extraction_service.extract_identity(updated_history)
+                    
+                    print(f"[chat.py] Extraction result: identity_info={identity_info is not None}, completion={completion_pct}%")
+                    
+                    if identity_info:
+                        session_obj.extracted_identity = identity_info.model_dump()
+                        print(f"[chat.py] ✅ Identity saved to DB")
+                        print(f"[chat.py]    Employment: {identity_info.employment_status}")
+                        print(f"[chat.py]    Income sources: {identity_info.income_sources}")
+                        print(f"[chat.py]    Has dependents: {identity_info.has_dependents}")
+                        print(f"[chat.py]    Has investment: {identity_info.has_investment}")
+                        print(f"[chat.py]    Has rental: {identity_info.has_rental_property}")
+                        print(f"[chat.py]    Completion: {completion_pct}%")
+                    else:
+                        print(f"[chat.py] ⚠️ Identity extraction returned None")
+                    
+                    print(f"[chat.py] ========== IDENTITY EXTRACTION END ==========\n")
+                
+                # Commit once for both messages and identity
                 db.commit()
                 db.refresh(session_obj)
                 print(f"[chat.py] Both messages saved, new history length: {len(session_obj.conversation_history)}")

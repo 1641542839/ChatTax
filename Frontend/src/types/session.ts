@@ -71,8 +71,12 @@ export interface ChatSession {
   conversation_history: SessionMessage[];
   /** Extracted identity information */
   extracted_identity: ExtractedIdentity | null;
+  /** Information completion percentage (0-100) */
+  completion_percentage?: number;
   /** Associated checklist ID */
   checklist_id: string | null;
+  /** Whether checklist has been generated */
+  checklist_generated?: boolean;
   /** Session creation time */
   created_at: string;
   /** Last update time */
@@ -98,6 +102,8 @@ export interface SessionListItem {
   title?: string;
   /** Whether checklist has been generated */
   checklist_generated?: boolean;
+  /** Information completion percentage (0-100) */
+  completion_percentage?: number;
 }
 
 // ============================================================
