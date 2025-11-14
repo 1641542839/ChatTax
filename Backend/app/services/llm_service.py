@@ -400,8 +400,22 @@ Return the checklist as a JSON array.""")
             additional_info=str(identity_info.additional_info) if identity_info.additional_info else "None"
         )
         
+        # DEBUG: Log formatted prompt
+        print(f"🤖 LLMService - Sending prompt to OpenAI:")
+        print(f"   Employment Status: {identity_info.employment_status}")
+        print(f"   Income Sources: {', '.join(identity_info.income_sources)}")
+        print(f"   Has Dependents: {'Yes' if identity_info.has_dependents else 'No'}")
+        print(f"   Has Investment: {'Yes' if identity_info.has_investment else 'No'}")
+        print(f"   Has Rental Property: {'Yes' if identity_info.has_rental_property else 'No'}")
+        print(f"   First Time Filer: {'Yes' if identity_info.is_first_time_filer else 'No'}")
+        print(f"   Additional Info: {str(identity_info.additional_info) if identity_info.additional_info else 'None'}")
+        
         # Generate checklist
         response = await self.llm.ainvoke(messages)
+        
+        # DEBUG: Log LLM response
+        print(f"📤 LLMService - Received response from OpenAI (first 500 chars):")
+        print(response.content[:500] if len(response.content) > 500 else response.content)
         checklist_text = response.content.strip()
         
         # Parse JSON response

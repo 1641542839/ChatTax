@@ -95,6 +95,9 @@ async def generate_checklist(
             )
         else:
             # Form-based generation (Path 1)
+            # DEBUG: Log received identity_info
+            print(f"📥 Received identity_info from frontend: {request.identity_info}")
+            
             checklist = await checklist_service.generate_and_save_checklist(
                 user_id=current_user.id,
                 identity_info=request.identity_info,

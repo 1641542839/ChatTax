@@ -371,16 +371,17 @@ GET  /api/session/list           - List user's sessions
 DELETE /api/session/{session_id} - Delete session
 ```
 
-### Checklist
+### Checklist (All endpoints require authentication)
 ```
-POST /api/checklist/generate               - Generate checklist (form/session)
-GET  /api/checklist/my-checklists          - Get all checklists (authenticated)
-GET  /api/checklist/{id}                   - Get single checklist
-PATCH /api/checklist/{id}/status           - Update item status
+POST /api/checklist/generate               - Generate checklist (authenticated, form/session)
+GET  /api/checklist/my-checklists          - Get all checklists for current user (authenticated)
+GET  /api/checklist/{id}                   - Get single checklist (authenticated)
+PATCH /api/checklist/{id}/status           - Update item status (authenticated)
 DELETE /api/checklist/{id}                 - Delete checklist (authenticated)
-POST /api/checklist/{id}/regenerate        - Regenerate checklist
-PUT  /api/checklist/{id}/item              - Update item (deprecated)
+POST /api/checklist/{id}/regenerate        - Regenerate checklist (authenticated)
 ```
+
+**Note**: All checklist endpoints require JWT Bearer token in Authorization header.
 
 ### Guided Chat
 ```

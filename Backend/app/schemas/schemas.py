@@ -190,14 +190,13 @@ class ChecklistIdentityInfo(BaseModel):
 class ChecklistGenerateRequest(BaseModel):
     """
     Request schema for generating a personalized tax checklist.
+    Uses authenticated user from JWT token (user_id no longer required in request body).
     """
-    user_id: int = Field(..., description="User ID for whom to generate the checklist")
     identity_info: ChecklistIdentityInfo = Field(..., description="User's identity and tax situation information")
 
     class Config:
         json_schema_extra = {
             "example": {
-                "user_id": 123,
                 "identity_info": {
                     "employment_status": "employed",
                     "income_sources": ["salary", "investment"],

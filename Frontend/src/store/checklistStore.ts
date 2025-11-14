@@ -38,11 +38,11 @@ interface ChecklistState {
 
   // API integration Actions
   generateChecklistFromAPI: (
-    userId: number,
+    token: string,
     identityInfo: ChecklistIdentityInfo
   ) => Promise<void>
   loadChecklistFromAPI: (checklistId: number, token: string) => Promise<void>
-  loadUserChecklistsFromAPI: (userId: number) => Promise<void>
+  loadUserChecklistsFromAPI: (token: string) => Promise<void>
   updateTaskStatusInAPI: (
     itemId: string,
     newStatus: TaskStatus,
@@ -196,15 +196,20 @@ export const useChecklistStore = create<ChecklistState>((set, get) => ({
   // ==================== API Integration ====================
 
   /**
-   * Generate new personalized checklist from API
+   * Generate new personalized checklist from API (authenticated)
    */
-  generateChecklistFromAPI: async (userId, identityInfo) => {
+  generateChecklistFromAPI: async (token, identityInfo) => {
     set({ isLoading: true, error: null })
     try {
+      // DEBUG: Log identity info being sent to API
+      console.log('📤 Sending identityInfo to API:', identityInfo)
+      
       const response = await checklistService.generateChecklist({
-        user_id: userId,
         identity_info: identityInfo,
-      })
+      }, token)
+      
+      // DEBUG: Log API response
+      console.log('📥 Received checklist from API:', response)
 
       // Convert backend data to frontend format
       const tasks: Task[] = response.items.map((item) => ({
@@ -266,20 +271,20 @@ export const useChecklistStore = create<ChecklistState>((set, get) => ({
   },
 
   /**
-   * Load all user checklists (use the latest one)
+   * Load all user checklists (use the latest one) - authenticated
    */
-  loadUserChecklistsFromAPI: async (userId) => {
+  loadUserChecklistsFromAPI: async (token) => {
     set({ isLoading: true, error: null })
     try {
-      const checklists = await checklistService.getUserChecklists(userId)
+      const checklists = await checklistService.getUserChecklists(token)
 
       if (checklists.length === 0) {
         set({ tasks: [], currentChecklistId: null, isLoading: false })
         return
       }
 
-      // Use the latest checklist
-      const latestChecklist = checklists[checklists.length - 1]
+      // Use the latest checklist (backend returns newest first)
+      const latestChecklist = checklists[0]
       const tasks: Task[] = latestChecklist.items.map((item) => ({
         id: item.id,
         title: item.title,

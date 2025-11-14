@@ -50,17 +50,24 @@ export interface UpdateItemStatusRequest {
 // ==================== API Functions ====================
 
 /**
- * Generate personalized checklist
+ * Generate personalized checklist (authenticated)
  * POST /api/checklist/generate
  */
 export async function generateChecklist(
-  request: GenerateChecklistRequest
+  request: Omit<GenerateChecklistRequest, 'user_id'>,
+  token: string
 ): Promise<ChecklistResponse> {
+  if (!token) {
+    throw new Error('Authentication token is required')
+  }
+
   const response = await fetch(`${API_BASE_URL}/api/checklist/generate`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
     },
+    credentials: 'include',
     body: JSON.stringify(request),
   })
 

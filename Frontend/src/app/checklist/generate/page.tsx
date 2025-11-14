@@ -3,7 +3,9 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useChecklistStore } from '@/store/checklistStore'
-import { createIdentityInfo } from '@/services/checklistService'
+import { useAuthStore } from '@/store/authStore'
+import { isTokenExpired, clearAuthTokens } from '@/lib/tokenUtils'
+import type { ChecklistIdentityInfo } from '@/services/checklistService'
 import {
   Card,
   Form,
@@ -34,13 +36,60 @@ const { Title, Paragraph, Text } = Typography
 const { Option } = Select
 const { TextArea } = Input
 
+/**
+ * Helper function to create ChecklistIdentityInfo from form values
+ */
+function createIdentityInfo(
+  employmentStatus: string,
+  options: {
+    incomeSources?: string[]
+    hasDependents?: boolean
+    hasInvestment?: boolean
+    hasRentalProperty?: boolean
+    isFirstTimeFiler?: boolean
+    additionalInfo?: Record<string, any>
+  }
+): ChecklistIdentityInfo {
+  return {
+    employment_status: employmentStatus as any,
+    income_sources: options.incomeSources || [],
+    has_dependents: options.hasDependents || false,
+    has_investment: options.hasInvestment || false,
+    has_rental_property: options.hasRentalProperty || false,
+    is_first_time_filer: options.isFirstTimeFiler,
+    additional_info: options.additionalInfo || {},
+  }
+}
+
 export default function GenerateChecklistPage() {
   const router = useRouter()
   const { generateChecklistFromAPI, isLoading, error } = useChecklistStore()
+  const { token, logout } = useAuthStore()
   const [form] = Form.useForm()
 
   const handleGenerate = async (values: any) => {
+    // Check authentication
+    const storedToken = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null
+    const finalToken = token || storedToken
+    
+    if (!finalToken) {
+      message.warning('请先登录')
+      router.push('/login')
+      return
+    }
+    
+    if (isTokenExpired(finalToken)) {
+      message.warning('登录已过期，请重新登录')
+      clearAuthTokens()
+      logout()
+      router.push('/login')
+      return
+    }
+    
     try {
+      // DEBUG: Log form values
+      console.log('📝 Form values submitted:', values)
+      
       // Construct identity information
       const identityInfo = createIdentityInfo(values.employmentStatus, {
         incomeSources: values.incomeSources || ['salary'],
@@ -61,15 +110,26 @@ export default function GenerateChecklistPage() {
           additional_notes: values.additionalNotes,
         },
       })
+      
+      // DEBUG: Log constructed identityInfo
+      console.log('🔍 Identity info to be sent:', identityInfo)
 
-      // Generate checklist via API
-      await generateChecklistFromAPI(1, identityInfo)
+      // Generate checklist via API with token
+      await generateChecklistFromAPI(finalToken, identityInfo)
+
+      // Get the generated checklist ID from store
+      const generatedChecklistId = useChecklistStore.getState().currentChecklistId
 
       message.success('🎉 Personalized Australian tax checklist generated successfully!')
       
-      // Navigate to checklist page
+      // Navigate to checklist page with ID
       setTimeout(() => {
-        router.push('/checklist')
+        if (generatedChecklistId) {
+          router.push(`/checklist?id=${generatedChecklistId}`)
+        } else {
+          // Fallback to /checklist without ID (will load latest from API)
+          router.push('/checklist')
+        }
       }, 1000)
     } catch (err) {
       message.error('Failed to generate checklist. Please try again.')

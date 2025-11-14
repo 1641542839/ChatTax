@@ -67,6 +67,16 @@ class ChecklistService:
         Raises:
             Exception: If checklist generation or database save fails
         """
+        # DEBUG: Log identity_info before LLM call
+        print(f"🔍 ChecklistService - identity_info to be sent to LLM:")
+        print(f"  - employment_status: {identity_info.employment_status}")
+        print(f"  - income_sources: {identity_info.income_sources}")
+        print(f"  - has_dependents: {identity_info.has_dependents}")
+        print(f"  - has_investment: {identity_info.has_investment}")
+        print(f"  - has_rental_property: {identity_info.has_rental_property}")
+        print(f"  - is_first_time_filer: {identity_info.is_first_time_filer}")
+        print(f"  - additional_info: {identity_info.additional_info}")
+        
         # Step 1: Generate checklist using LLM
         checklist_items = await self.llm_service.generate_tax_checklist(identity_info)
         

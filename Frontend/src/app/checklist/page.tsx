@@ -107,9 +107,27 @@ export default function ChecklistPage() {
         }
       } else {
         // Mode 2: Load from store (form-generated checklist)
+        // Check authentication
+        const storedToken = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null
+        const finalToken = token || storedToken
+        
+        if (!finalToken) {
+          message.warning('请先登录')
+          router.push('/login')
+          return
+        }
+        
+        if (isTokenExpired(finalToken)) {
+          message.warning('登录已过期，请重新登录')
+          clearAuthTokens()
+          logout()
+          router.push('/login')
+          return
+        }
+        
         setDataSource('store')
         try {
-          await loadUserChecklistsFromAPI(1)
+          await loadUserChecklistsFromAPI(finalToken)
         } catch (err) {
           console.log('Failed to load from API, using default data')
           initializeDefaultTasks()
@@ -186,8 +204,26 @@ export default function ChecklistPage() {
         setIsLoadingSession(false)
       }
     } else if (dataSource === 'store') {
+      // Get token for refresh
+      const storedToken = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null
+      const finalToken = token || storedToken
+      
+      if (!finalToken) {
+        message.warning('请先登录')
+        router.push('/login')
+        return
+      }
+      
+      if (isTokenExpired(finalToken)) {
+        message.warning('登录已过期，请重新登录')
+        clearAuthTokens()
+        logout()
+        router.push('/login')
+        return
+      }
+      
       try {
-        await loadUserChecklistsFromAPI(1)
+        await loadUserChecklistsFromAPI(finalToken)
         message.success('Checklist refreshed successfully')
       } catch (err) {
         message.error('Failed to refresh checklist')
