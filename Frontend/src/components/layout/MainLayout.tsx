@@ -13,6 +13,7 @@ import {
   FormOutlined,
   CommentOutlined,
   WechatOutlined,
+  FileTextOutlined,
 } from '@ant-design/icons'
 import type { MenuProps } from 'antd'
 
@@ -58,10 +59,10 @@ const MainLayout = ({ children }: MainLayoutProps) => {
       label: 'Tax Checklist',
       children: [
         {
-          key: '/checklist',
+          key: '/checklist/generate',
           icon: <FormOutlined />,
           label: 'Form Mode',
-          onClick: () => router.push('/checklist'),
+          onClick: () => router.push('/checklist/generate'),
         },
         {
           key: '/checklist/guided',
@@ -78,6 +79,12 @@ const MainLayout = ({ children }: MainLayoutProps) => {
       ],
     },
     {
+      key: '/checklists',
+      icon: <FileTextOutlined />,
+      label: 'My Checklists',
+      onClick: () => router.push('/checklists'),
+    },
+    {
       key: '/calculator',
       icon: <CalculatorOutlined />,
       label: 'Tax Calculator',
@@ -89,7 +96,9 @@ const MainLayout = ({ children }: MainLayoutProps) => {
   const getSelectedKeys = (): string[] => {
     if (pathname === '/') return ['/']
     if (pathname.startsWith('/checklist/guided')) return ['/checklist/guided']
-    if (pathname.startsWith('/checklist')) return ['/checklist']
+    if (pathname.startsWith('/checklist/generate')) return ['/checklist/generate']
+    if (pathname.startsWith('/checklist') && !pathname.startsWith('/checklists')) return ['/checklist']
+    if (pathname.startsWith('/checklists')) return ['/checklists']
     if (pathname.startsWith('/chat')) return ['/chat']
     if (pathname.startsWith('/calculator')) return ['/calculator']
     return []
@@ -120,7 +129,7 @@ const MainLayout = ({ children }: MainLayoutProps) => {
         collapsed={collapsed}
         onCollapse={toggleCollapsed}
         trigger={null}
-        width={240}
+        width={260}
         style={{
           overflow: 'auto',
           height: '100vh',
@@ -129,16 +138,18 @@ const MainLayout = ({ children }: MainLayoutProps) => {
           top: 64, // Height of Navbar
           bottom: 0,
           zIndex: 100,
-          background: '#fff',
-          borderRight: '1px solid #f0f0f0',
+          background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)',
+          borderRight: '2px solid #e2e8f0',
+          boxShadow: '4px 0 24px rgba(0,0,0,0.04)',
         }}
       >
         <div
           style={{
-            padding: '16px',
-            borderBottom: '1px solid #f0f0f0',
+            padding: '20px',
+            borderBottom: '2px solid #e2e8f0',
             display: 'flex',
             justifyContent: collapsed ? 'center' : 'flex-end',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
           }}
         >
           <Button
@@ -146,9 +157,18 @@ const MainLayout = ({ children }: MainLayoutProps) => {
             icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
             onClick={toggleCollapsed}
             style={{
-              fontSize: '16px',
-              width: 32,
-              height: 32,
+              fontSize: '18px',
+              width: 40,
+              height: 40,
+              color: 'white',
+              borderRadius: '12px',
+              transition: 'all 0.3s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(255,255,255,0.2)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent'
             }}
           />
         </div>
@@ -159,17 +179,21 @@ const MainLayout = ({ children }: MainLayoutProps) => {
           items={menuItems}
           style={{
             borderRight: 0,
-            height: 'calc(100% - 65px)',
+            height: 'calc(100% - 81px)',
+            background: 'transparent',
+            fontSize: '15px',
+            fontWeight: '500',
           }}
+          theme="light"
         />
       </Sider>
-      <Layout style={{ marginLeft: collapsed ? 80 : 240, transition: 'margin-left 0.2s' }}>
+      <Layout style={{ marginLeft: collapsed ? 80 : 260, transition: 'margin-left 0.2s' }}>
         <Content
           style={{
             marginTop: 64, // Height of Navbar
-            padding: '24px',
+            padding: 0,
             minHeight: 'calc(100vh - 64px)',
-            background: '#f0f2f5',
+            background: '#f5f7fa',
           }}
         >
           {children}

@@ -95,7 +95,7 @@ export default function TaxInfoCollectionWidget() {
         <Space direction="vertical" size="small" style={{ width: '100%' }} className="text-center">
           <InfoCircleOutlined className="text-gray-400 text-2xl" />
           <Text type="secondary" style={{ fontSize: 12 }}>
-            开始对话以收集税务信息
+            Start conversation to collect tax information
           </Text>
         </Space>
       </Card>
@@ -119,7 +119,7 @@ export default function TaxInfoCollectionWidget() {
         {/* Header */}
         <Space>
           <InfoCircleOutlined className="text-blue-500 text-lg" />
-          <Text strong>税务信息收集</Text>
+          <Text strong>Tax Information Collection</Text>
         </Space>
 
         {/* Progress Circle */}
@@ -137,12 +137,12 @@ export default function TaxInfoCollectionWidget() {
           />
           <Space direction="vertical" size={0}>
             <Text>
-              信息完整度: <strong>{completionPercentage}%</strong>
+              Information Completeness: <strong>{completionPercentage}%</strong>
             </Text>
             <Text type="secondary" style={{ fontSize: 12 }}>
               {completionPercentage >= 60 
-                ? '✅ 可以生成 Checklist' 
-                : `还需 ${60 - completionPercentage}% 信息`
+                ? '✅ Ready to generate checklist' 
+                : `${60 - completionPercentage}% more info needed`
               }
             </Text>
           </Space>
@@ -151,24 +151,24 @@ export default function TaxInfoCollectionWidget() {
         {/* Extracted Info Tags */}
         {extractedIdentity && (
           <div className="flex flex-wrap gap-2">
-            {extractedIdentity.filing_status && (
+            {extractedIdentity.residency_status && (
               <Tag color="blue" style={{ fontSize: 11 }}>
-                📊 {extractedIdentity.filing_status}
+                🇦🇺 {extractedIdentity.residency_status}
               </Tag>
             )}
             {extractedIdentity.has_dependents && (
               <Tag color="green" style={{ fontSize: 11 }}>
-                👶 有抚养人
+                👶 Has dependents
               </Tag>
             )}
             {extractedIdentity.has_investments && (
               <Tag color="purple" style={{ fontSize: 11 }}>
-                💰 有投资
+                💰 Has investments
               </Tag>
             )}
             {extractedIdentity.has_rental_property && (
               <Tag color="orange" style={{ fontSize: 11 }}>
-                🏠 有租金收入
+                🏠 Rental income
               </Tag>
             )}
           </div>

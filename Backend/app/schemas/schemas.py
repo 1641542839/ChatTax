@@ -86,14 +86,14 @@ class ChatResponse(BaseModel):
 class QueryRequest(BaseModel):
     """Request schema for RAG-based query."""
 
-    question: str = Field(..., min_length=1, max_length=2000, description="User's tax-related question")
+    question: str = Field(..., min_length=1, max_length=2000, description="User's tax-related question for Australian personal tax")
     user_type: str = Field(default="individual", description="Type of user: only 'individual' supported (for personal Australian taxpayers)")
     top_k: int = Field(default=3, ge=1, le=10, description="Number of relevant documents to retrieve")
 
     class Config:
         json_schema_extra = {
             "example": {
-                "question": "What are the tax deductions for home office expenses in 2024?",
+                "question": "What are the tax deductions for home office expenses in the 2023-24 financial year?",
                 "user_type": "individual",
                 "top_k": 3
             }
@@ -130,18 +130,18 @@ class QueryResponse(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
-                "answer": "For home office expenses in 2024, you can deduct...",
+                "answer": "For home office expenses in the 2023-24 financial year, you can claim a deduction for expenses related to your home office if you work from home...",
                 "sources": [
                     {
                         "chunk_id": "chunk_001",
-                        "doc_id": "irs_pub_587",
-                        "source_url": "https://www.irs.gov/publications/p587",
-                        "section_heading": "Home Office Deduction",
-                        "text": "You can deduct expenses for the business use of your home...",
+                        "doc_id": "ato_home_office",
+                        "source_url": "https://www.ato.gov.au/individuals/income-deductions-offsets-and-records/deductions-you-can-claim/home-office-expenses",
+                        "section_heading": "Home Office Expenses",
+                        "text": "You can claim a deduction for expenses related to your home office...",
                         "tokens_est": 150,
                         "is_table_summary": False,
                         "table_ref": None,
-                        "provenance": "IRS Official Website",
+                        "provenance": "ATO Official Website",
                         "crawl_date": "2024-01-15",
                         "last_updated_on_page": "2024-01-10",
                         "relevance_score": 0.92

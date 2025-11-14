@@ -22,33 +22,35 @@ export interface SessionMessage {
 }
 
 /**
- * Tax identity information extracted from conversation
+ * Tax identity information extracted from conversation (Australian personal tax)
  */
 export interface ExtractedIdentity {
-  /** Filing status */
-  filing_status?: 'single' | 'married_joint' | 'married_separate' | 'head_of_household' | 'qualifying_widow';
-  /** Annual income range */
+  /** Australian tax residency status */
+  residency_status?: 'resident' | 'foreign_resident' | 'working_holiday_maker';
+  /** Annual income range (Australian tax brackets) */
   income_range?: string;
   /** Has dependents */
   has_dependents?: boolean;
   /** Number of dependents */
   num_dependents?: number;
-  /** State of residence */
-  state?: string;
   /** Has self-employment income */
   has_self_employment?: boolean;
   /** Has investment income */
   has_investments?: boolean;
   /** Has rental property */
   has_rental_property?: boolean;
-  /** Has education expenses */
-  has_education_expenses?: boolean;
-  /** Has medical expenses */
-  has_medical_expenses?: boolean;
-  /** Has charitable donations */
+  /** Has work-related expenses */
+  has_work_expenses?: boolean;
+  /** Has charitable donations to DGRs */
   has_charitable_donations?: boolean;
-  /** Has retirement contributions */
-  has_retirement_contributions?: boolean;
+  /** Has personal superannuation contributions */
+  has_super_contributions?: boolean;
+  /** Has HECS/HELP debt */
+  has_hecs_debt?: boolean;
+  /** Has private health insurance */
+  has_private_health_insurance?: boolean;
+  /** Has foreign income */
+  has_foreign_income?: boolean;
   /** Additional context */
   additional_context?: string;
   /** Completion percentage (0-100) */
@@ -187,27 +189,28 @@ export enum GenerationMode {
 }
 
 /**
- * Checklist generation request
+ * Checklist generation request (Australian personal tax)
  */
 export interface ChecklistGenerationRequest {
   /** Generation mode */
   generation_mode: GenerationMode;
   /** Session ID (required for GUIDED_CHAT and FREE_CHAT) */
   session_id?: string;
-  /** Form data (required for FORM mode) */
+  /** Form data (required for FORM mode) - Australian context */
   identity?: {
-    filing_status?: string;
+    residency_status?: string;
     income_range?: string;
     has_dependents?: boolean;
     num_dependents?: number;
-    state?: string;
     has_self_employment?: boolean;
     has_investments?: boolean;
     has_rental_property?: boolean;
-    has_education_expenses?: boolean;
-    has_medical_expenses?: boolean;
+    has_work_expenses?: boolean;
     has_charitable_donations?: boolean;
-    has_retirement_contributions?: boolean;
+    has_super_contributions?: boolean;
+    has_hecs_debt?: boolean;
+    has_private_health_insurance?: boolean;
+    has_foreign_income?: boolean;
     additional_context?: string;
   };
 }
@@ -217,15 +220,15 @@ export interface ChecklistGenerationRequest {
 // ============================================================
 
 /**
- * Guided question phases
+ * Guided question phases (Australian personal tax)
  */
 export enum QuestionPhase {
-  FILING_STATUS = 'filing_status',
+  RESIDENCY = 'residency',
   INCOME_RANGE = 'income_range',
   DEPENDENTS = 'dependents',
-  STATE = 'state',
   EMPLOYMENT = 'employment',
   INVESTMENTS = 'investments',
+  RENTAL = 'rental',
   DEDUCTIONS = 'deductions',
   ADDITIONAL = 'additional',
   COMPLETE = 'complete',

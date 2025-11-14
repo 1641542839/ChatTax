@@ -89,11 +89,22 @@ export const useAuthStore = create<AuthState & AuthActions>()(
       /**
        * Set authentication token
        */
-      setToken: (token) => set({ 
-        token,
-        isAuthenticated: !!token,
-        isLoading: false
-      }),
+      setToken: (token) => {
+        // Also store in localStorage for compatibility with api.ts
+        if (typeof window !== 'undefined') {
+          if (token) {
+            localStorage.setItem('access_token', token);
+          } else {
+            localStorage.removeItem('access_token');
+          }
+        }
+        
+        set({ 
+          token,
+          isAuthenticated: !!token,
+          isLoading: false
+        });
+      },
 
       /**
        * Clear authentication state

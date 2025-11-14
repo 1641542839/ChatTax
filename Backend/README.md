@@ -1,19 +1,29 @@
-# ChatTax Backend
+# ChatTax Backend 🇦🇺
 
-FastAPI backend for ChatTax - an AI-powered Australian tax assistant application.
+FastAPI backend for ChatTax - an AI-powered **Australian personal tax return** assistant application.
+
+## 🎯 Important Notice
+
+**This system is specifically designed for Australian individual taxpayers only.**
+- ✅ Australian personal/individual tax returns
+- ✅ ATO (Australian Taxation Office) regulations
+- ✅ myGov integration concepts
+- ❌ NOT for business tax returns
+- ❌ NOT for other countries (US, UK, etc.)
 
 ## Overview
 
 ChatTax Backend provides intelligent tax assistance through:
 
-- **RAG (Retrieval-Augmented Generation)**: AI answers grounded in 3,246 official Australian tax documents
+- **RAG (Retrieval-Augmented Generation)**: AI answers grounded in official ATO documents
 - **FAISS Vector Search**: Fast semantic search (~5ms) through tax documents  
 - **OpenAI GPT-4o-mini**: Generates accurate answers with citations
-- **Dynamic Checklists**: Personalized tax prep tasks (5-15 items based on complexity)
+- **Dynamic Checklists**: Personalized tax prep tasks (10-20 items based on complexity)
 - **JWT Authentication**: Secure user management
 - **SSE Streaming**: Real-time chat responses
 
-**Target Users**: Australian individual taxpayers only
+**Target Market**: Australia 🇦🇺  
+**Target Users**: Individual Australian taxpayers (personal tax returns only)
 
 ## Quick Start
 

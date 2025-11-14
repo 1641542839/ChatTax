@@ -54,16 +54,13 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
       'tax return',
       'what do I need',
       'what should I',
-      '准备',
-      '材料',
-      '文件',
-      '文档',
-      '需要',
-      '清单',
-      '步骤',
-      '流程',
-      '如何报税',
-      '报税准备',
+      'prepare',
+      'preparation',
+      'documents',
+      'materials',
+      'requirements',
+      'lodge',
+      'lodgement',
     ]
     
     return keywords.some((keyword) => message.content.toLowerCase().includes(keyword.toLowerCase()))

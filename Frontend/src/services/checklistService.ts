@@ -73,20 +73,26 @@ export async function generateChecklist(
 }
 
 /**
- * Get single checklist
+ * Get single checklist (authenticated)
  * GET /api/checklist/{id}
  */
 export async function getChecklist(
   checklistId: number,
-  userId: number
+  token: string
 ): Promise<ChecklistResponse> {
+  if (!token) {
+    throw new Error('Authentication token is required')
+  }
+
   const response = await fetch(
-    `${API_BASE_URL}/api/checklist/${checklistId}?user_id=${userId}`,
+    `${API_BASE_URL}/api/checklist/${checklistId}`,
     {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
       },
+      credentials: 'include',
     }
   )
 
@@ -99,15 +105,21 @@ export async function getChecklist(
 }
 
 /**
- * Get all checklists for a user
- * GET /api/checklist/user/{user_id}
+ * Get all checklists for current authenticated user
+ * GET /api/checklist/my-checklists
  */
-export async function getUserChecklists(userId: number): Promise<ChecklistResponse[]> {
-  const response = await fetch(`${API_BASE_URL}/api/checklist/user/${userId}`, {
+export async function getUserChecklists(token: string): Promise<ChecklistResponse[]> {
+  if (!token) {
+    throw new Error('Authentication token is required')
+  }
+
+  const response = await fetch(`${API_BASE_URL}/api/checklist/my-checklists`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
     },
+    credentials: 'include',
   })
 
   if (!response.ok) {
@@ -153,18 +165,25 @@ export async function updateItemStatus(
 /**
  * Delete checklist
  * DELETE /api/checklist/{id}
+ * Requires authentication token
  */
 export async function deleteChecklist(
   checklistId: number,
-  userId: number
-): Promise<{ message: string }> {
+  token: string
+): Promise<void> {
+  if (!token) {
+    throw new Error('Authentication token is required')
+  }
+
   const response = await fetch(
-    `${API_BASE_URL}/api/checklist/${checklistId}?user_id=${userId}`,
+    `${API_BASE_URL}/api/checklist/${checklistId}`,
     {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
       },
+      credentials: 'include',
     }
   )
 
@@ -173,7 +192,8 @@ export async function deleteChecklist(
     throw new Error(error.detail || `Failed to delete checklist: ${response.statusText}`)
   }
 
-  return response.json()
+  // 204 No Content - no response body
+  return
 }
 
 // ==================== Helper Functions ====================

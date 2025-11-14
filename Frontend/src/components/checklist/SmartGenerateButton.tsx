@@ -64,20 +64,20 @@ export const SmartGenerateButton: React.FC<SmartGenerateButtonProps> = ({
   // Generate tooltip text based on state
   const getTooltipText = () => {
     if (hasChecklist) {
-      return 'Checklist已生成。点击重新生成以使用最新信息更新。';
+      return 'Checklist generated. Click to regenerate and update with latest information.';
     }
     if (canGenerate) {
-      return `信息完整度: ${completionPercentage}%。已达到生成条件，点击生成Checklist。`;
+      return `Information completeness: ${completionPercentage}%. Ready to generate checklist.`;
     }
     const remaining = 60 - completionPercentage;
-    return `需要更多信息 (还需${remaining}%)。继续对话以收集必要信息。`;
+    return `More information needed (${remaining}% remaining). Continue conversation to collect necessary details.`;
   };
 
   // If checklist exists, show view and regenerate buttons
   if (hasChecklist) {
     return (
       <Space direction="vertical" size="small" style={{ width: '100%' }} className={className}>
-        <Tooltip title="查看已生成的Checklist">
+        <Tooltip title="View generated checklist">
           <Button
             type="primary"
             icon={<CheckCircleOutlined />}
@@ -85,7 +85,7 @@ export const SmartGenerateButton: React.FC<SmartGenerateButtonProps> = ({
             onClick={onGenerate}
             style={{ width: '100%' }}
           >
-            查看Checklist
+            View Checklist
           </Button>
         </Tooltip>
         {onRegenerate && (
@@ -97,7 +97,7 @@ export const SmartGenerateButton: React.FC<SmartGenerateButtonProps> = ({
             size={size}
             style={{ width: '100%' }}
           >
-            重新生成
+            Regenerate
           </Button>
         )}
       </Space>
@@ -117,7 +117,7 @@ export const SmartGenerateButton: React.FC<SmartGenerateButtonProps> = ({
           size={size}
           style={{ width: '100%' }}
         >
-          {canGenerate ? '生成Checklist' : `收集信息中 (${completionPercentage}%)`}
+          {canGenerate ? 'Generate Checklist' : `Collecting Info (${completionPercentage}%)`}
         </Button>
       </Tooltip>
       
@@ -131,7 +131,7 @@ export const SmartGenerateButton: React.FC<SmartGenerateButtonProps> = ({
         />
         {!canGenerate && (
           <div style={{ fontSize: '12px', color: '#8c8c8c', marginTop: '4px' }}>
-            需要至少60%的信息完整度
+            Requires at least 60% information completeness
           </div>
         )}
       </div>

@@ -116,6 +116,34 @@ async def generate_checklist(
         )
 
 
+# ============================================================
+# IMPORTANT: Specific routes MUST come before parameterized routes
+# /my-checklists must be before /{checklist_id}
+# ============================================================
+
+@router.get(
+    "/my-checklists",
+    response_model=List[ChecklistResponse],
+    summary="Get all checklists for current user",
+    description="Retrieve all checklists belonging to the authenticated user, ordered by creation date (newest first)."
+)
+async def get_user_checklists(
+    current_user: User = Depends(get_current_user),
+    checklist_service: ChecklistService = Depends(get_checklist_service)
+) -> List[ChecklistResponse]:
+    """
+    Get all checklists for the authenticated user.
+    
+    Args:
+        current_user: Current authenticated user (from JWT)
+        checklist_service: Checklist service (injected)
+        
+    Returns:
+        List of ChecklistResponse objects for current user only
+    """
+    return checklist_service.get_user_checklists(current_user.id)
+
+
 @router.get(
     "/{checklist_id}",
     response_model=ChecklistResponse,
@@ -124,7 +152,7 @@ async def generate_checklist(
 )
 async def get_checklist(
     checklist_id: int,
-    user_id: int,
+    current_user: User = Depends(get_current_user),
     checklist_service: ChecklistService = Depends(get_checklist_service)
 ) -> ChecklistResponse:
     """
@@ -132,7 +160,7 @@ async def get_checklist(
     
     Args:
         checklist_id: ID of the checklist
-        user_id: ID of the user (for authorization)
+        current_user: Current authenticated user (from JWT)
         checklist_service: Checklist service (injected)
         
     Returns:
@@ -141,7 +169,7 @@ async def get_checklist(
     Raises:
         HTTPException: If checklist not found or doesn't belong to user
     """
-    checklist = checklist_service.get_checklist(checklist_id, user_id)
+    checklist = checklist_service.get_checklist(checklist_id, current_user.id)
     
     if not checklist:
         raise HTTPException(
@@ -150,29 +178,6 @@ async def get_checklist(
         )
     
     return checklist
-
-
-@router.get(
-    "/user/{user_id}",
-    response_model=List[ChecklistResponse],
-    summary="Get all checklists for a user",
-    description="Retrieve all checklists belonging to a specific user, ordered by creation date (newest first)."
-)
-async def get_user_checklists(
-    user_id: int,
-    checklist_service: ChecklistService = Depends(get_checklist_service)
-) -> List[ChecklistResponse]:
-    """
-    Get all checklists for a user.
-    
-    Args:
-        user_id: ID of the user
-        checklist_service: Checklist service (injected)
-        
-    Returns:
-        List of ChecklistResponse objects
-    """
-    return checklist_service.get_user_checklists(user_id)
 
 
 @router.patch(
@@ -229,30 +234,30 @@ async def update_item_status(
     "/{checklist_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Delete a checklist",
-    description="Delete a checklist. User must own the checklist."
+    description="Delete a checklist owned by the authenticated user."
 )
 async def delete_checklist(
     checklist_id: int,
-    user_id: int,
+    current_user: User = Depends(get_current_user),
     checklist_service: ChecklistService = Depends(get_checklist_service)
 ):
     """
-    Delete a checklist.
+    Delete a checklist owned by the current user.
     
     Args:
-        checklist_id: ID of the checklist
-        user_id: ID of the user (for authorization)
+        checklist_id: ID of the checklist to delete
+        current_user: Current authenticated user (from JWT)
         checklist_service: Checklist service (injected)
         
     Raises:
-        HTTPException: If checklist not found
+        HTTPException: If checklist not found or user doesn't own it
     """
-    success = checklist_service.delete_checklist(checklist_id, user_id)
+    success = checklist_service.delete_checklist(checklist_id, current_user.id)
     
     if not success:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Checklist {checklist_id} not found or you don't have access"
+            detail=f"Checklist {checklist_id} not found or you don't have permission to delete it"
         )
     
     return None

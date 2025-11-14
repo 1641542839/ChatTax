@@ -1,4 +1,14 @@
-# 📋 Checklist 生成系统设计方案
+# ⚠️ DEPRECATED - See English Version
+
+**This document is in Chinese and is deprecated.**
+
+**Please refer to the English version**: [docs/CHECKLIST_GENERATION_SYSTEM.md](docs/CHECKLIST_GENERATION_SYSTEM.md)
+
+**Note**: This project now focuses exclusively on **Australian individual tax returns**. All US tax references have been removed.
+
+---
+
+# 📋 Checklist 生成系统设计方案 (DEPRECATED)
 
 ## 📐 系统架构概览
 

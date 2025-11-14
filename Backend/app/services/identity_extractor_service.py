@@ -2,7 +2,7 @@
 Identity Extractor Service for extracting tax identity information from conversations.
 
 Uses LLM to analyze conversation history and extract structured identity information
-that can be used for checklist generation.
+for AUSTRALIAN INDIVIDUAL taxpayers that can be used for checklist generation.
 """
 from typing import Dict, List, Optional
 import json
@@ -11,28 +11,27 @@ from app.core.config import settings
 
 
 class IdentityExtractorService:
-    """Service for extracting identity information from conversations."""
+    """Service for extracting identity information from conversations about Australian personal tax."""
     
-    # Required fields for complete identity
+    # Required fields for complete identity (Australian context)
     REQUIRED_FIELDS = {
-        "filing_status": ["single", "married_filing_jointly", "married_filing_separately", "head_of_household"],
-        "employment_type": ["W2_employee", "self_employed", "business_owner", "freelancer", "retired", "student"],
-        "state": str,  # Two-letter state code
+        "residency_status": ["resident", "foreign_resident", "working_holiday_maker"],
+        "employment_type": ["employed", "self_employed", "contractor", "retired", "student", "unemployed"],
         "has_dependents": bool,
+        "annual_income_range": str,
     }
     
     # Optional but valuable fields
     OPTIONAL_FIELDS = {
         "num_dependents": int,
-        "annual_income_range": str,
         "owns_home": bool,
         "has_investments": bool,
-        "has_business": bool,
         "has_rental_property": bool,
         "has_foreign_income": bool,
-        "has_retirement_contributions": bool,
-        "has_education_expenses": bool,
-        "has_medical_expenses": bool,
+        "has_super_contributions": bool,
+        "has_work_expenses": bool,
+        "has_hecs_debt": bool,
+        "has_private_health_insurance": bool,
         "has_charitable_donations": bool,
     }
     
@@ -61,9 +60,9 @@ class IdentityExtractorService:
             for msg in conversation_history
         ])
         
-        # Create extraction prompt
+        # Create extraction prompt for Australian personal tax
         extraction_prompt = f"""
-Analyze the following conversation and extract tax-related identity information.
+Analyze the following conversation and extract tax-related identity information for an AUSTRALIAN INDIVIDUAL taxpayer.
 
 CONVERSATION:
 {conversation_text}
@@ -72,25 +71,25 @@ INSTRUCTIONS:
 Extract the following information if mentioned in the conversation:
 
 REQUIRED FIELDS:
-- filing_status: single, married_filing_jointly, married_filing_separately, or head_of_household
-- employment_type: W2_employee, self_employed, business_owner, freelancer, retired, or student
-- state: Two-letter US state code (e.g., CA, NY, TX)
+- residency_status: resident, foreign_resident, or working_holiday_maker (Australian tax residency)
+- employment_type: employed, self_employed, contractor, retired, student, or unemployed
 - has_dependents: true or false
+- annual_income_range: e.g., "under_18200", "18200-45000", "45000-120000", "120000-180000", "over_180000"
 
 OPTIONAL FIELDS:
 - num_dependents: number (if has_dependents is true)
-- annual_income_range: e.g., "50k-75k", "75k-100k", "100k-150k", "150k+"
 - owns_home: true or false
-- has_investments: true or false (stocks, bonds, crypto, etc.)
-- has_business: true or false
+- has_investments: true or false (shares, managed funds, etc.)
 - has_rental_property: true or false
 - has_foreign_income: true or false
-- has_retirement_contributions: true or false (401k, IRA, etc.)
-- has_education_expenses: true or false
-- has_medical_expenses: true or false (significant medical costs)
-- has_charitable_donations: true or false
+- has_super_contributions: true or false (personal superannuation contributions)
+- has_work_expenses: true or false (work-related deductions)
+- has_hecs_debt: true or false (HECS/HELP student loan)
+- has_private_health_insurance: true or false
+- has_charitable_donations: true or false (donations to DGRs)
 
 IMPORTANT:
+- This is for AUSTRALIAN PERSONAL tax returns only
 - Only include fields that are explicitly mentioned or clearly implied
 - Do not guess or make assumptions
 - Return valid JSON only
@@ -196,34 +195,33 @@ Return a JSON object with the extracted fields:
     @staticmethod
     def format_for_checklist(extracted_info: Dict) -> Dict:
         """
-        Format extracted info into ChecklistIdentityInfo schema.
+        Format extracted info into ChecklistIdentityInfo schema (Australian context).
         
         Args:
             extracted_info: Raw extracted identity
             
         Returns:
-            Formatted identity info for checklist generation
+            Formatted identity info for Australian tax checklist generation
         """
-        # Map to checklist schema
+        # Map to checklist schema (Australian fields)
         formatted = {
-            "filing_status": extracted_info.get("filing_status"),
+            "residency_status": extracted_info.get("residency_status"),
             "employment_type": extracted_info.get("employment_type"),
-            "state": extracted_info.get("state"),
             "has_dependents": extracted_info.get("has_dependents", False),
+            "annual_income_range": extracted_info.get("annual_income_range"),
         }
         
         # Add optional fields if present
         optional_mapping = {
             "num_dependents": "num_dependents",
-            "annual_income_range": "annual_income_range",
             "owns_home": "owns_home",
             "has_investments": "has_investments",
-            "has_business": "has_business",
             "has_rental_property": "has_rental_property",
             "has_foreign_income": "has_foreign_income",
-            "has_retirement_contributions": "has_retirement_contributions",
-            "has_education_expenses": "has_education_expenses",
-            "has_medical_expenses": "has_medical_expenses",
+            "has_super_contributions": "has_super_contributions",
+            "has_work_expenses": "has_work_expenses",
+            "has_hecs_debt": "has_hecs_debt",
+            "has_private_health_insurance": "has_private_health_insurance",
             "has_charitable_donations": "has_charitable_donations",
         }
         
