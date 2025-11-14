@@ -83,6 +83,7 @@ export default function SessionChatWindow() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const hasPendingQuestionProcessed = useRef(false);
   const lastMessageContent = useRef<string>(''); // Track last user message to avoid duplicates
+  const expectedMessageCount = useRef<number>(0); // Track expected message count after streaming
 
   // Don't auto-create session on mount anymore
   // Only create when user actually sends a message or has pending question
@@ -91,6 +92,17 @@ export default function SessionChatWindow() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, streamingMessage]);
+
+  // Clear streaming message when real messages are loaded
+  useEffect(() => {
+    if (expectedMessageCount.current > 0 && messages.length >= expectedMessageCount.current) {
+      console.log('[SessionChatWindow] ✅ Messages loaded, clearing streaming state');
+      setStreamingMessage('');
+      lastMessageContent.current = '';
+      setIsSending(false);
+      expectedMessageCount.current = 0;
+    }
+  }, [messages.length]);
 
   // Check for pending question from checklist (run only once per mount)
   useEffect(() => {
@@ -201,9 +213,11 @@ export default function SessionChatWindow() {
               if (currentSessionId) {
                 console.log('[SessionChatWindow] Streaming done, waiting for messages to be saved...');
                 
-                // Retry loading session until we get the new messages
+                // Set expected message count for useEffect to monitor
                 const initialMessageCount = messages.length;
-                const expectedCount = initialMessageCount + 2; // user + assistant
+                expectedMessageCount.current = initialMessageCount + 2; // user + assistant
+                
+                // Retry loading session until we get the new messages
                 let retries = 0;
                 const maxRetries = 10;
                 let currentCount = 0;
@@ -221,11 +235,12 @@ export default function SessionChatWindow() {
                     const sessionData = await response.json();
                     currentCount = sessionData.conversation_history?.length || 0;
                     
-                    console.log('[SessionChatWindow] Retry', retries + 1, '- messages:', currentCount, 'expected:', expectedCount);
+                    console.log('[SessionChatWindow] Retry', retries + 1, '- messages:', currentCount, 'expected:', expectedMessageCount.current);
                     
-                    if (currentCount >= expectedCount) {
-                      console.log('[SessionChatWindow] ✅ All messages loaded');
+                    if (currentCount >= expectedMessageCount.current) {
+                      console.log('[SessionChatWindow] ✅ Backend has all messages, loading session...');
                       // Now reload via context to update UI
+                      // The useEffect will automatically clear streaming state when messages update
                       await loadSession(currentSessionId);
                       break;
                     }
@@ -236,14 +251,18 @@ export default function SessionChatWindow() {
                   retries++;
                 }
                 
-                if (currentCount < expectedCount) {
+                if (currentCount < expectedMessageCount.current) {
                   console.warn('[SessionChatWindow] ⚠️ Timed out waiting for all messages');
                   // Still load whatever we have
                   await loadSession(currentSessionId);
+                  // Force clear after timeout
+                  setTimeout(() => {
+                    setStreamingMessage('');
+                    lastMessageContent.current = '';
+                    setIsSending(false);
+                    expectedMessageCount.current = 0;
+                  }, 200);
                 }
-                
-                // Clear streaming message
-                setStreamingMessage('');
                 
                 // Notify session list to refresh
                 window.dispatchEvent(new CustomEvent('sessionUpdated', { 
@@ -261,9 +280,9 @@ export default function SessionChatWindow() {
     } catch (err) {
       console.error('Send message error:', err);
       setStreamingMessage('');
-      lastMessageContent.current = ''; // Clear on error
-    } finally {
+      lastMessageContent.current = '';
       setIsSending(false);
+      expectedMessageCount.current = 0;
     }
   };
 
@@ -372,7 +391,8 @@ export default function SessionChatWindow() {
                 </div>
               </div>
             )}
-            {streamingMessage && (
+            {/* Show streaming message ONLY if it's not already saved in messages */}
+            {streamingMessage && !messages.some(m => m.role === 'assistant' && m.content === streamingMessage) && (
               <div className="flex justify-start">
                 <div className="max-w-[70%] rounded-2xl px-4 py-3 bg-white border border-gray-200 text-gray-800">
                   <div className="mb-2 text-xs text-blue-500 flex items-center gap-1">

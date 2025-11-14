@@ -72,12 +72,13 @@ async def chat_stream(
             conversation_history = []
             has_checklist = False
             checklist_items = None
+            session_obj = None  # Keep reference to session object for later save
             
             if session_id and current_user:
-                session = SessionService.get_session(db, session_id, current_user.id)
-                if session:
-                    conversation_history = session.conversation_history or []
-                    has_checklist = session.checklist_generated
+                session_obj = SessionService.get_session(db, session_id, current_user.id)
+                if session_obj:
+                    conversation_history = session_obj.conversation_history or []
+                    has_checklist = session_obj.checklist_generated
                     # TODO: Load checklist items for better intent classification
             
             # Step 2: Classify intent (context-aware)
@@ -115,35 +116,36 @@ async def chat_stream(
                 }
             
             # Step 4: Save messages to session
-            if session_id and current_user:
+            if session_obj and current_user:
+                from datetime import datetime
                 print(f"[chat.py] Saving messages - User: {len(message.content)} chars, Assistant: {len(full_response)} chars")
-                # Get session and add both messages before committing
-                session_obj = SessionService.get_session(db, session_id, current_user.id)
-                if session_obj:
-                    from datetime import datetime
-                    # Add user message
-                    history = session_obj.conversation_history or []
-                    history.append({
-                        "role": "user",
-                        "content": message.content,
-                        "timestamp": datetime.utcnow().isoformat()
-                    })
-                    # Add assistant message
-                    history.append({
-                        "role": "assistant",
-                        "content": full_response,
-                        "timestamp": datetime.utcnow().isoformat()
-                    })
-                    # Update session
-                    session_obj.conversation_history = history
-                    session_obj.updated_at = datetime.utcnow()
-                    # Auto-generate title from first user message
-                    if not session_obj.title or session_obj.title == "新对话":
-                        session_obj.title = message.content[:50] + "..." if len(message.content) > 50 else message.content
-                    # Commit once for both messages
-                    db.commit()
-                    db.refresh(session_obj)
-                    print(f"[chat.py] Both messages saved, history length: {len(session_obj.conversation_history)}")
+                print(f"[chat.py] Current history length: {len(conversation_history)}")
+                
+                # Use the conversation_history we already loaded, append new messages
+                updated_history = conversation_history.copy()
+                updated_history.append({
+                    "role": "user",
+                    "content": message.content,
+                    "timestamp": datetime.utcnow().isoformat()
+                })
+                updated_history.append({
+                    "role": "assistant",
+                    "content": full_response,
+                    "timestamp": datetime.utcnow().isoformat()
+                })
+                
+                # Update session with new history
+                session_obj.conversation_history = updated_history
+                session_obj.updated_at = datetime.utcnow()
+                
+                # Auto-generate title from first user message
+                if not session_obj.title or session_obj.title == "新对话":
+                    session_obj.title = message.content[:50] + "..." if len(message.content) > 50 else message.content
+                
+                # Commit once for both messages
+                db.commit()
+                db.refresh(session_obj)
+                print(f"[chat.py] Both messages saved, new history length: {len(session_obj.conversation_history)}")
             
             # Send completion event
             yield {
