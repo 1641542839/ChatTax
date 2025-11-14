@@ -157,6 +157,9 @@ class SessionService:
                 # Use first 50 chars of first user message as title
                 session.title = content[:50] + "..." if len(content) > 50 else content
         
+        # Explicitly update updated_at to ensure it reflects the latest change
+        session.updated_at = datetime.utcnow()
+        
         db.commit()
         db.refresh(session)
         

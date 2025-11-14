@@ -69,6 +69,10 @@ class ChatMessage(BaseModel):
     """Chat message schema."""
 
     content: str = Field(..., min_length=1, max_length=5000, alias="message")
+    
+    model_config = {
+        "populate_by_name": True,  # Allow both 'content' and 'message' field names
+    }
 
 
 class ChatResponse(BaseModel):

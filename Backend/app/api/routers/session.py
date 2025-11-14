@@ -40,6 +40,7 @@ class SessionResponse(BaseModel):
     id: int
     session_id: str
     title: str
+    is_active: bool
     checklist_id: Optional[int]
     checklist_generated: bool
     message_count: int
@@ -55,6 +56,9 @@ class SessionDetailResponse(SessionResponse):
     conversation_history: List[dict]
     extracted_identity: Optional[dict]
     identity_completion: Optional[dict]
+    
+    class Config:
+        from_attributes = True
 
 
 @router.post("/sessions", response_model=SessionResponse, status_code=status.HTTP_201_CREATED)
@@ -83,12 +87,13 @@ def create_session(
     return SessionResponse(
         id=session.id,
         session_id=session.session_id,
-        title=session.title or "新对话",
+        title=session.title or "New Chat",
+        is_active=session.is_active,
         checklist_id=session.checklist_id,
         checklist_generated=session.checklist_generated,
         message_count=len(session.conversation_history or []),
-        created_at=session.created_at.isoformat(),
-        updated_at=session.updated_at.isoformat()
+        created_at=session.created_at.isoformat() if session.created_at else "",
+        updated_at=session.updated_at.isoformat() if session.updated_at else ""
     )
 
 
@@ -122,12 +127,13 @@ def list_sessions(
         SessionResponse(
             id=s.id,
             session_id=s.session_id,
-            title=s.title or "新对话",
+            title=s.title or "New Chat",
+            is_active=s.is_active,
             checklist_id=s.checklist_id,
             checklist_generated=s.checklist_generated,
             message_count=len(s.conversation_history or []),
-            created_at=s.created_at.isoformat(),
-            updated_at=s.updated_at.isoformat()
+            created_at=s.created_at.isoformat() if s.created_at else "",
+            updated_at=s.updated_at.isoformat() if s.updated_at else ""
         )
         for s in sessions
     ]
@@ -173,15 +179,16 @@ def get_session(
     return SessionDetailResponse(
         id=session.id,
         session_id=session.session_id,
-        title=session.title or "新对话",
+        title=session.title or "New Chat",
+        is_active=session.is_active,
         checklist_id=session.checklist_id,
         checklist_generated=session.checklist_generated,
         message_count=len(session.conversation_history or []),
         conversation_history=session.conversation_history or [],
         extracted_identity=session.extracted_identity,
         identity_completion=identity_completion,
-        created_at=session.created_at.isoformat(),
-        updated_at=session.updated_at.isoformat()
+        created_at=session.created_at.isoformat() if session.created_at else "",
+        updated_at=session.updated_at.isoformat() if session.updated_at else ""
     )
 
 
@@ -248,15 +255,16 @@ def add_message(
     return SessionDetailResponse(
         id=session.id,
         session_id=session.session_id,
-        title=session.title or "新对话",
+        title=session.title or "New Chat",
+        is_active=session.is_active,
         checklist_id=session.checklist_id,
         checklist_generated=session.checklist_generated,
         message_count=len(session.conversation_history or []),
         conversation_history=session.conversation_history or [],
         extracted_identity=extraction_result["extracted_info"],
         identity_completion=identity_completion,
-        created_at=session.created_at.isoformat(),
-        updated_at=session.updated_at.isoformat()
+        created_at=session.created_at.isoformat() if session.created_at else "",
+        updated_at=session.updated_at.isoformat() if session.updated_at else ""
     )
 
 

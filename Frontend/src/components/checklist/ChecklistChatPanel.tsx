@@ -71,18 +71,22 @@ export default function ChecklistChatPanel({
     linkChecklist,
   } = useSessionContext();
 
-  // Initialize session and link to checklist
+  // Initialize session and link to checklist (only when necessary)
   useEffect(() => {
     if (!session) {
-      createSession().then(() => {
-        if (session) {
+      console.log('[ChecklistChatPanel] No session, creating new one');
+      createSession().then((newSession) => {
+        if (newSession) {
           linkChecklist(checklistId);
         }
       });
     } else if (!session.checklist_id || session.checklist_id !== checklistId) {
+      console.log('[ChecklistChatPanel] Linking existing session to checklist');
       linkChecklist(checklistId);
     }
-  }, [session, checklistId, createSession, linkChecklist]);
+  // Only re-run when session or checklistId changes, not when functions change
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.session_id, checklistId]);
 
   // Auto-scroll to bottom
   useEffect(() => {

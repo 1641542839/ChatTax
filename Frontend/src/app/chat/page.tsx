@@ -6,9 +6,24 @@ import { SessionProvider } from '@/contexts/SessionContext'
 import SessionListSidebar from '@/components/chat/SessionListSidebar'
 import SessionChatWindow from '@/components/chat/SessionChatWindow'
 import ChecklistProgressWidget from '@/components/chat/ChecklistProgressWidget'
+import { sessionStorage } from '@/services/sessionService'
 
 export default function ChatPage() {
   const { loadUserChecklistsFromAPI } = useChecklistStore()
+
+  // Clear session on page load - start with empty chat window
+  useEffect(() => {
+    console.log('[ChatPage] Clearing cached session for fresh start');
+    sessionStorage.clearAll();
+  }, []);
+
+  // Debug: Track page mount/unmount
+  useEffect(() => {
+    console.log('[ChatPage] Component mounted');
+    return () => {
+      console.log('[ChatPage] Component unmounting');
+    };
+  }, []);
 
   // Load user checklist on page load (fail silently)
   useEffect(() => {
@@ -18,7 +33,7 @@ export default function ChatPage() {
   }, [loadUserChecklistsFromAPI])
 
   return (
-    <SessionProvider autoLoad={true}>
+    <SessionProvider autoLoad={false}>
       <div className="flex h-[calc(100vh-64px)]">
         {/* Left Panel - Session List & Checklist Widget */}
         <div className="w-80 border-r flex flex-col">

@@ -12,6 +12,7 @@ import type {
   SessionMessage,
   ExtractedIdentity,
   AddMessageRequest,
+  SessionListItem,
 } from '@/types/session';
 
 interface UseSessionReturn {
@@ -32,7 +33,7 @@ interface UseSessionReturn {
   /** Whether session has enough info for checklist generation */
   canGenerateChecklist: boolean;
   /** Create a new session */
-  createSession: (initialMessage?: string) => Promise<void>;
+  createSession: (initialMessage?: string) => Promise<ChatSession | null>;
   /** Load an existing session */
   loadSession: (sessionId: string) => Promise<void>;
   /** Send a message to current session */
@@ -96,7 +97,9 @@ export function useSession(autoLoad = false): UseSessionReturn {
   /**
    * Create a new session
    */
-  const createSession = useCallback(async (initialMessage?: string) => {
+  const createSession = useCallback(async (initialMessage?: string): Promise<ChatSession | null> => {
+    console.log('[useSession] createSession called, initialMessage:', initialMessage);
+    console.trace('[useSession] createSession call stack');
     setLoading(true);
     setError(null);
 
@@ -105,6 +108,7 @@ export function useSession(autoLoad = false): UseSessionReturn {
         initialMessage ? { initial_message: initialMessage } : undefined
       );
 
+      console.log('[useSession] Session created successfully:', newSession.session_id);
       setSession(newSession);
       setExtractedIdentity(newSession.extracted_identity);
       setCompletionPercentage(newSession.extracted_identity?.completion_percentage || 0);
@@ -113,10 +117,13 @@ export function useSession(autoLoad = false): UseSessionReturn {
       // Save to localStorage
       sessionStorage.setCurrentSessionId(newSession.session_id);
       sessionStorage.setCachedSession(newSession);
+
+      return newSession;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create session';
       setError(errorMessage);
-      console.error('Create session error:', err);
+      console.error('[useSession] Create session error:', err);
+      return null;
     } finally {
       setLoading(false);
     }
@@ -126,11 +133,13 @@ export function useSession(autoLoad = false): UseSessionReturn {
    * Load an existing session
    */
   const loadSession = useCallback(async (sessionId: string) => {
+    console.log('[useSession] loadSession called for:', sessionId);
     setLoading(true);
     setError(null);
 
     try {
       const loadedSession = await sessionService.getSession(sessionId);
+      console.log('[useSession] Session loaded, messages count:', loadedSession.conversation_history?.length);
 
       setSession(loadedSession);
       setExtractedIdentity(loadedSession.extracted_identity);
@@ -143,7 +152,7 @@ export function useSession(autoLoad = false): UseSessionReturn {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load session';
       setError(errorMessage);
-      console.error('Load session error:', err);
+      console.error('[useSession] Load session error:', err);
     } finally {
       setLoading(false);
     }
@@ -286,37 +295,54 @@ export function useSession(autoLoad = false): UseSessionReturn {
  * ```
  */
 export function useSessionList() {
-  const [sessions, setSessions] = useState<any[]>([]);
+  // Use concrete typing for stronger guarantees
+  const [sessions, setSessions] = useState<SessionListItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const loadSessions = useCallback(async (limit = 20, offset = 0) => {
+    console.log('[useSessionList] loadSessions called');
     setLoading(true);
     setError(null);
 
     try {
       const sessionList = await sessionService.listSessions(limit, offset);
-      setSessions(sessionList);
+      console.log('[useSessionList] Fetched sessions:', sessionList.length, 'total');
+      // Defensive filter in case legacy records lack is_active flag or backend param changes
+      const activeOnly = sessionList.filter(s => s.is_active !== false);
+      console.log('[useSessionList] Active sessions:', activeOnly.length, 'sessions');
+      setSessions(activeOnly);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load sessions';
       setError(errorMessage);
-      console.error('Load sessions error:', err);
+      console.error('[useSessionList] Load sessions error:', err);
     } finally {
       setLoading(false);
     }
   }, []);
 
   const deleteSession = useCallback(async (sessionId: string) => {
+    console.log('[useSessionList] deleteSession called for:', sessionId);
     setLoading(true);
     setError(null);
-
     try {
       await sessionService.deleteSession(sessionId);
-      setSessions(prev => prev.filter(s => s.id !== sessionId));
+      console.log('[useSessionList] Delete API call successful');
+      // Optimistic removal; we also trigger a fresh list reload to reflect server state
+      setSessions(prev => {
+        const filtered = prev.filter(s => s.session_id !== sessionId);
+        console.log('[useSessionList] Optimistically removed. Before:', prev.length, 'After:', filtered.length);
+        return filtered;
+      });
+      // Authoritative reload (listSessions already filters inactive)
+      const fresh = await sessionService.listSessions();
+      console.log('[useSessionList] Reloaded after delete. Count:', fresh.length);
+      setSessions(fresh);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete session';
       setError(errorMessage);
-      console.error('Delete session error:', err);
+      console.error('[useSessionList] Delete session error:', err);
+      throw err;
     } finally {
       setLoading(false);
     }

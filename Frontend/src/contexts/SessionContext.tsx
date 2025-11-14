@@ -33,7 +33,7 @@ interface SessionContextValue {
   /** Whether session has enough info for checklist generation */
   canGenerateChecklist: boolean;
   /** Create a new session */
-  createSession: (initialMessage?: string) => Promise<void>;
+  createSession: (initialMessage?: string) => Promise<ChatSession | null>;
   /** Load an existing session */
   loadSession: (sessionId: string) => Promise<void>;
   /** Send a message to current session */

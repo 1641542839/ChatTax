@@ -7,7 +7,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, Button, Progress, Radio, Checkbox, Input, InputNumber, Space, message, Spin } from 'antd';
 import { ArrowRightOutlined, CheckCircleOutlined, HomeOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
@@ -26,18 +26,35 @@ export default function GuidedChatPage() {
   const [answer, setAnswer] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const initializingRef = useRef(false);
 
-  // Initialize guided chat session
+  // Initialize guided chat session (only once, even in Strict Mode)
   useEffect(() => {
+    // Prevent double initialization in React Strict Mode
+    if (initializingRef.current) {
+      console.log('[GuidedChat] Already initializing, skipping duplicate call');
+      return;
+    }
+    
+    console.log('[GuidedChat] Component mounted, initializing session');
+    initializingRef.current = true;
     initializeSession();
+    
+    // Cleanup: Don't leave stray sessions when user navigates away
+    return () => {
+      console.log('[GuidedChat] Component unmounting');
+      // Session will be cleaned up by backend or user can explicitly delete it
+    };
   }, []);
 
   const initializeSession = async () => {
+    console.log('[GuidedChat] initializeSession called');
     setLoading(true);
     try {
       const token = localStorage.getItem('access_token');
       
-      // Create new session
+      // Create new session for guided chat
+      console.log('[GuidedChat] Creating new session...');
       const sessionResponse = await fetch('http://localhost:8000/api/sessions', {
         method: 'POST',
         headers: {
@@ -52,12 +69,13 @@ export default function GuidedChatPage() {
       }
 
       const session = await sessionResponse.json();
+      console.log('[GuidedChat] Session created:', session.session_id);
       setSessionId(session.session_id);
 
       // Get first question
       await getNextQuestion(session.session_id, null);
     } catch (error) {
-      console.error('Initialize session error:', error);
+      console.error('[GuidedChat] Initialize session error:', error);
       message.error('Failed to start guided chat. Please try again.');
     } finally {
       setLoading(false);

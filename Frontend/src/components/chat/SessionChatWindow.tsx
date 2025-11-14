@@ -72,6 +72,7 @@ export default function SessionChatWindow() {
     completionPercentage,
     extractedIdentity,
     createSession,
+    loadSession,
     sendMessage,
   } = useSessionContext();
 
@@ -80,23 +81,24 @@ export default function SessionChatWindow() {
   const [streamingMessage, setStreamingMessage] = useState('');
   const [currentIntent, setCurrentIntent] = useState<IntentType | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const hasPendingQuestionProcessed = useRef(false);
+  const lastMessageContent = useRef<string>(''); // Track last user message to avoid duplicates
 
-  // Create session on mount if none exists
-  useEffect(() => {
-    if (!session && !loading) {
-      createSession();
-    }
-  }, [session, loading, createSession]);
+  // Don't auto-create session on mount anymore
+  // Only create when user actually sends a message or has pending question
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, streamingMessage]);
 
-  // Check for pending question from checklist
+  // Check for pending question from checklist (run only once per mount)
   useEffect(() => {
+    if (hasPendingQuestionProcessed.current) return;
+    
     const pendingQuestion = localStorage.getItem('pendingQuestion');
     if (pendingQuestion) {
+      hasPendingQuestionProcessed.current = true;
       localStorage.removeItem('pendingQuestion');
       setInput(pendingQuestion);
       
@@ -113,30 +115,54 @@ export default function SessionChatWindow() {
 
     setInput('');
     setIsSending(true);
+    lastMessageContent.current = content; // Track for display logic
     setStreamingMessage('');
     setCurrentIntent(null);
 
     try {
+      // Create session if none exists
+      let currentSessionId = session?.session_id;
+      if (!currentSessionId) {
+        const newSession = await createSession();
+        if (!newSession) {
+          throw new Error('Failed to create session');
+        }
+        currentSessionId = newSession.session_id;
+        
+        // Notify session list to refresh
+        window.dispatchEvent(new CustomEvent('sessionCreated', { 
+          detail: { sessionId: currentSessionId } 
+        }));
+      }
+
       // Send via streaming API with session support
       const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
       const token = localStorage.getItem('access_token');
 
-      const response = await fetch(`${API_BASE_URL}/api/chat/stream`, {
+      // Build URL with session_id as query parameter
+      const url = new URL(`${API_BASE_URL}/api/chat/stream`);
+      if (currentSessionId) {
+        url.searchParams.append('session_id', currentSessionId);
+      }
+
+      const response = await fetch(url.toString(), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          message: content,
-          session_id: session?.session_id,
+          message: content,  // Backend expects 'message' field (alias for 'content' in ChatMessage schema)
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to send message');
+        const errorText = await response.text();
+        console.error('[SessionChatWindow] HTTP error:', response.status, errorText);
+        throw new Error(`Failed to send message: ${response.status}`);
       }
 
+      console.log('[SessionChatWindow] Starting to read streaming response...');
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
 
@@ -162,6 +188,7 @@ export default function SessionChatWindow() {
 
           try {
             const event = JSON.parse(data);
+            console.log('[SessionChatWindow] SSE event:', event.type, event);
 
             if (event.type === 'chunk') {
               setStreamingMessage((prev) => prev + event.content);
@@ -170,9 +197,59 @@ export default function SessionChatWindow() {
                 setCurrentIntent(event.intent.intent);
               }
             } else if (event.type === 'done') {
-              // Message complete, update session via context
-              await sendMessage(content);
-              setStreamingMessage('');
+              // Message complete, streaming endpoint already saved messages to session
+              if (currentSessionId) {
+                console.log('[SessionChatWindow] Streaming done, waiting for messages to be saved...');
+                
+                // Retry loading session until we get the new messages
+                const initialMessageCount = messages.length;
+                const expectedCount = initialMessageCount + 2; // user + assistant
+                let retries = 0;
+                const maxRetries = 10;
+                let currentCount = 0;
+                
+                while (retries < maxRetries) {
+                  await new Promise(resolve => setTimeout(resolve, 300));
+                  
+                  // Directly fetch session to check message count
+                  try {
+                    const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+                    const token = localStorage.getItem('access_token');
+                    const response = await fetch(`${API_BASE_URL}/api/sessions/${currentSessionId}`, {
+                      headers: { 'Authorization': `Bearer ${token}` },
+                    });
+                    const sessionData = await response.json();
+                    currentCount = sessionData.conversation_history?.length || 0;
+                    
+                    console.log('[SessionChatWindow] Retry', retries + 1, '- messages:', currentCount, 'expected:', expectedCount);
+                    
+                    if (currentCount >= expectedCount) {
+                      console.log('[SessionChatWindow] ✅ All messages loaded');
+                      // Now reload via context to update UI
+                      await loadSession(currentSessionId);
+                      break;
+                    }
+                  } catch (err) {
+                    console.error('[SessionChatWindow] Error checking session:', err);
+                  }
+                  
+                  retries++;
+                }
+                
+                if (currentCount < expectedCount) {
+                  console.warn('[SessionChatWindow] ⚠️ Timed out waiting for all messages');
+                  // Still load whatever we have
+                  await loadSession(currentSessionId);
+                }
+                
+                // Clear streaming message
+                setStreamingMessage('');
+                
+                // Notify session list to refresh
+                window.dispatchEvent(new CustomEvent('sessionUpdated', { 
+                  detail: { sessionId: currentSessionId } 
+                }));
+              }
             } else if (event.type === 'error') {
               throw new Error(event.error);
             }
@@ -184,6 +261,7 @@ export default function SessionChatWindow() {
     } catch (err) {
       console.error('Send message error:', err);
       setStreamingMessage('');
+      lastMessageContent.current = ''; // Clear on error
     } finally {
       setIsSending(false);
     }
@@ -241,7 +319,7 @@ export default function SessionChatWindow() {
           <div className="flex h-full items-center justify-center">
             <Spin size="large" tip="Loading session..." />
           </div>
-        ) : messages.length === 0 ? (
+        ) : messages.length === 0 && !isSending ? (
           <div className="flex h-full items-center justify-center">
             <Empty
               description={
@@ -274,14 +352,36 @@ export default function SessionChatWindow() {
                 message={message}
               />
             ))}
-            {streamingMessage && (
+            {/* Show pending user message ONLY if it's not already in messages */}
+            {isSending && lastMessageContent.current && !messages.some(m => m.content === lastMessageContent.current) && (
               <SessionMessageBubble
                 message={{
-                  role: 'assistant',
-                  content: streamingMessage,
+                  role: 'user',
+                  content: lastMessageContent.current,
                   timestamp: new Date().toISOString(),
                 }}
               />
+            )}
+            {isSending && !streamingMessage && (
+              <div className="flex justify-start">
+                <div className="max-w-[70%] rounded-2xl px-4 py-3 bg-white border border-gray-200 text-gray-800">
+                  <div className="flex items-center gap-2">
+                    <Spin size="small" />
+                    <span className="text-gray-500">AI is thinking...</span>
+                  </div>
+                </div>
+              </div>
+            )}
+            {streamingMessage && (
+              <div className="flex justify-start">
+                <div className="max-w-[70%] rounded-2xl px-4 py-3 bg-white border border-gray-200 text-gray-800">
+                  <div className="mb-2 text-xs text-blue-500 flex items-center gap-1">
+                    <Spin size="small" />
+                    <span>Generating answer...</span>
+                  </div>
+                  <div className="whitespace-pre-wrap break-words">{streamingMessage}</div>
+                </div>
+              </div>
             )}
             <div ref={messagesEndRef} />
           </div>

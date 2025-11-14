@@ -18,6 +18,7 @@ import {
 } from '@ant-design/icons';
 import { useSessionList } from '@/hooks/useSession';
 import { useSessionContext } from '@/contexts/SessionContext';
+import { sessionStorage } from '@/services/sessionService';
 import type { SessionListItem } from '@/types/session';
 
 interface SessionListSidebarProps {
@@ -40,20 +41,48 @@ interface SessionListSidebarProps {
  */
 export default function SessionListSidebar({ className = '' }: SessionListSidebarProps) {
   const { sessions, loading, loadSessions, deleteSession } = useSessionList();
-  const { session: currentSession, createSession, loadSession } = useSessionContext();
+  const { session: currentSession, createSession, loadSession, clearSession } = useSessionContext();
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
 
   // Load sessions on mount
   useEffect(() => {
     loadSessions();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Listen for session creation and update events from chat window
+  useEffect(() => {
+    const handleSessionCreated = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      console.log('[SessionListSidebar] Session created event received:', customEvent.detail);
+      loadSessions(); // Refresh list when new session is created
+    };
+
+    const handleSessionUpdated = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      console.log('[SessionListSidebar] Session updated event received:', customEvent.detail);
+      loadSessions(); // Refresh list when session is updated (title/time changed)
+    };
+
+    window.addEventListener('sessionCreated', handleSessionCreated);
+    window.addEventListener('sessionUpdated', handleSessionUpdated);
+    return () => {
+      window.removeEventListener('sessionCreated', handleSessionCreated);
+      window.removeEventListener('sessionUpdated', handleSessionUpdated);
+    };
   }, [loadSessions]);
 
   const handleCreateNew = async () => {
+    console.log('handleCreateNew clicked - creating session manually');
     try {
-      await createSession();
+      const newSession = await createSession();
+      console.log('New session created:', newSession?.session_id);
       message.success('New session created');
       loadSessions(); // Refresh list
     } catch (error) {
+      console.error('Failed to create session:', error);
       message.error('Failed to create session');
     }
   };
@@ -68,30 +97,53 @@ export default function SessionListSidebar({ className = '' }: SessionListSideba
     }
   };
 
-  const handleDeleteSession = async (sessionId: string) => {
-    Modal.confirm({
-      title: 'Delete Session',
-      content: 'Are you sure you want to delete this conversation? This action cannot be undone.',
-      okText: 'Delete',
-      okType: 'danger',
-      cancelText: 'Cancel',
-      onOk: async () => {
-        setDeletingId(sessionId);
-        try {
-          await deleteSession(sessionId);
-          message.success('Session deleted');
-          
-          // If deleted session is current, create new one
-          if (currentSession?.session_id === sessionId) {
-            await createSession();
-          }
-        } catch (error) {
-          message.error('Failed to delete session');
-        } finally {
-          setDeletingId(null);
-        }
-      },
-    });
+  const handleDeleteClick = (sessionId: string) => {
+    console.log('[SessionListSidebar] Delete button clicked for:', sessionId);
+    console.log('[SessionListSidebar] Current sessions count:', sessions.length);
+    setSessionToDelete(sessionId);
+    setDeleteModalVisible(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!sessionToDelete) return;
+    
+    console.log('[SessionListSidebar] User confirmed deletion, starting...');
+    setDeletingId(sessionToDelete);
+    
+    try {
+      console.log('[SessionListSidebar] Calling deleteSession API...');
+      await deleteSession(sessionToDelete);
+      console.log('[SessionListSidebar] Delete API completed successfully');
+      
+      message.success('Session deleted successfully');
+      
+      // If deleted session is current, clear it from context
+      if (currentSession?.session_id === sessionToDelete) {
+        console.log('[SessionListSidebar] Clearing current session from context');
+        clearSession();
+      }
+      
+      // Refresh the session list
+      console.log('[SessionListSidebar] Reloading sessions...');
+      await loadSessions();
+      console.log('[SessionListSidebar] Sessions reloaded');
+      
+      setDeleteModalVisible(false);
+      setSessionToDelete(null);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Failed to delete session';
+      console.error('[SessionListSidebar] Delete error:', error);
+      message.error(`Failed to delete: ${errorMsg}`);
+    } finally {
+      setDeletingId(null);
+      console.log('[SessionListSidebar] Delete operation completed');
+    }
+  };
+
+  const handleCancelDelete = () => {
+    console.log('[SessionListSidebar] User cancelled deletion');
+    setDeleteModalVisible(false);
+    setSessionToDelete(null);
   };
 
   const formatDate = (dateString: string) => {
@@ -102,6 +154,17 @@ export default function SessionListSidebar({ className = '' }: SessionListSideba
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
 
+    // Debug: Log time difference for first render
+    if (sessions.length > 0 && sessions[0].updated_at === dateString) {
+      // console.log('[SessionListSidebar] Time debug:', {
+      //   dateString,
+      //   parsedDate: date.toISOString(),
+      //   now: now.toISOString(),
+      //   diffMs,
+      //   diffHours
+      // });
+    }
+
     if (diffMins < 1) return 'Just now';
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
@@ -111,11 +174,11 @@ export default function SessionListSidebar({ className = '' }: SessionListSideba
 
   const renderSessionItem = (item: SessionListItem) => {
     const isActive = currentSession?.session_id === item.session_id;
-    const isDeleting = deletingId === item.id;
+    const isDeleting = deletingId === item.session_id;  // Compare by session_id, not id
 
     return (
       <List.Item
-        key={item.id}
+        key={item.session_id}  // Use session_id as key for React
         className={`cursor-pointer transition-all hover:bg-blue-50 ${
           isActive ? 'bg-blue-100 border-l-4 border-l-blue-500' : ''
         }`}
@@ -130,7 +193,7 @@ export default function SessionListSidebar({ className = '' }: SessionListSideba
               loading={isDeleting}
               onClick={(e) => {
                 e.stopPropagation();
-                handleDeleteSession(item.session_id);
+                handleDeleteClick(item.session_id);
               }}
             />
           </Tooltip>,
@@ -231,6 +294,20 @@ export default function SessionListSidebar({ className = '' }: SessionListSideba
           {sessions.length} session{sessions.length !== 1 ? 's' : ''} total
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        title="Delete Session"
+        open={deleteModalVisible}
+        onOk={handleConfirmDelete}
+        onCancel={handleCancelDelete}
+        okText="Delete"
+        cancelText="Cancel"
+        okButtonProps={{ danger: true, loading: deletingId !== null }}
+      >
+        <p>Are you sure you want to delete this conversation?</p>
+        <p className="text-gray-500 text-sm mt-2">This action cannot be undone.</p>
+      </Modal>
     </div>
   );
 }

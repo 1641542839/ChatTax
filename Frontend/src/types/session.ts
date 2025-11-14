@@ -83,16 +83,21 @@ export interface ChatSession {
  * Session list item (without full history)
  */
 export interface SessionListItem {
-  id: string;
-  session_id: string;
-  user_id: string;
-  checklist_id: string | null;
+  id: number;  // Database integer ID
+  session_id: string;  // UUID string
+  user_id: number;
+  is_active: boolean;
+  checklist_id: number | null;
   created_at: string;
   updated_at: string;
   /** Number of messages in history */
   message_count: number;
   /** Last message preview */
   last_message?: string;
+  /** Session title */
+  title?: string;
+  /** Whether checklist has been generated */
+  checklist_generated?: boolean;
 }
 
 // ============================================================

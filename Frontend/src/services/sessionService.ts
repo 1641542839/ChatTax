@@ -43,12 +43,17 @@ export const sessionService = {
    * @returns List of session summaries
    */
   async listSessions(limit = 20, offset = 0): Promise<SessionListItem[]> {
+    // Ask backend to include inactive too, then filter client-side based on is_active
+    // This prevents any mismatch between server filtering and UI state after soft-delete
     const params = new URLSearchParams({
       limit: limit.toString(),
-      offset: offset.toString(),
+      include_inactive: 'true',
+      _ts: Date.now().toString(),
     });
-    const response = await apiClient<SessionListItem[]>(`${SESSION_BASE}?${params}`);
-    return response;
+    const url = `${SESSION_BASE}?${params.toString()}`;
+    const response = await apiClient<SessionListItem[]>(url, { cache: 'no-store' });
+    // Filter out inactive sessions client-side to be extra safe
+    return response.filter(s => s.is_active !== false);
   },
 
   /**
@@ -96,9 +101,12 @@ export const sessionService = {
    * @param sessionId Session UUID
    */
   async deleteSession(sessionId: string): Promise<void> {
+    console.log('sessionService.deleteSession - sessionId:', sessionId);
+    console.log('sessionService.deleteSession - URL:', `${SESSION_BASE}/${sessionId}`);
     await apiClient(`${SESSION_BASE}/${sessionId}`, {
       method: 'DELETE',
     });
+    console.log('sessionService.deleteSession - API call completed successfully');
   },
 
   /**
