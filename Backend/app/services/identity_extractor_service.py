@@ -14,25 +14,28 @@ class IdentityExtractorService:
     """Service for extracting identity information from conversations about Australian personal tax."""
     
     # Required fields for complete identity (Australian context)
+    # Must match ChecklistIdentityInfo schema
     REQUIRED_FIELDS = {
-        "residency_status": ["resident", "foreign_resident", "working_holiday_maker"],
-        "employment_type": ["employed", "self_employed", "contractor", "retired", "student", "unemployed"],
+        "employment_status": ["employed", "self_employed", "contractor", "retired", "student", "unemployed"],
+        "income_sources": list,  # List of income types (salary, rental, investment, etc.)
         "has_dependents": bool,
-        "annual_income_range": str,
     }
     
-    # Optional but valuable fields
+    # Optional but valuable fields (must match ChecklistIdentityInfo.additional_info)
     OPTIONAL_FIELDS = {
-        "num_dependents": int,
-        "owns_home": bool,
-        "has_investments": bool,
+        "has_investment": bool,  # Match schema: has_investment not has_investments
         "has_rental_property": bool,
-        "has_foreign_income": bool,
-        "has_super_contributions": bool,
-        "has_work_expenses": bool,
+        "is_first_time_filer": bool,
+        "num_dependents": int,
+        "residency_status": str,  # resident, foreign_resident, working_holiday_maker
+        "state": str,  # NSW, VIC, QLD, etc.
         "has_hecs_debt": bool,
         "has_private_health_insurance": bool,
-        "has_charitable_donations": bool,
+        "has_work_expenses": bool,
+        "has_home_office": bool,
+        "has_foreign_income": bool,
+        "has_charity_donations": bool,
+        "has_super_contributions": bool,
     }
     
     @staticmethod
@@ -71,22 +74,25 @@ INSTRUCTIONS:
 Extract the following information if mentioned in the conversation:
 
 REQUIRED FIELDS:
-- residency_status: resident, foreign_resident, or working_holiday_maker (Australian tax residency)
-- employment_type: employed, self_employed, contractor, retired, student, or unemployed
+- employment_status: employed, self_employed, contractor, retired, student, or unemployed
+- income_sources: array of income types (e.g., ["salary"], ["salary", "rental"], ["investment", "rental"])
+  * Possible values: "salary", "self_employment", "investment", "rental", "superannuation", "pension", "foreign", "government", "other"
 - has_dependents: true or false
-- annual_income_range: e.g., "under_18200", "18200-45000", "45000-120000", "120000-180000", "over_180000"
 
 OPTIONAL FIELDS:
-- num_dependents: number (if has_dependents is true)
-- owns_home: true or false
-- has_investments: true or false (shares, managed funds, etc.)
+- has_investment: true or false (shares, managed funds, etc.)
 - has_rental_property: true or false
-- has_foreign_income: true or false
-- has_super_contributions: true or false (personal superannuation contributions)
-- has_work_expenses: true or false (work-related deductions)
+- is_first_time_filer: true or false (first time lodging Australian tax return)
+- num_dependents: number (if has_dependents is true)
+- residency_status: resident, foreign_resident, or working_holiday_maker (Australian tax residency)
+- state: NSW, VIC, QLD, SA, WA, TAS, NT, ACT
 - has_hecs_debt: true or false (HECS/HELP student loan)
 - has_private_health_insurance: true or false
-- has_charitable_donations: true or false (donations to DGRs)
+- has_work_expenses: true or false (work-related deductions)
+- has_home_office: true or false (home office deductions)
+- has_foreign_income: true or false
+- has_charity_donations: true or false (donations to DGRs)
+- has_super_contributions: true or false (personal superannuation contributions)
 
 IMPORTANT:
 - This is for AUSTRALIAN PERSONAL tax returns only
@@ -196,37 +202,45 @@ Return a JSON object with the extracted fields:
     def format_for_checklist(extracted_info: Dict) -> Dict:
         """
         Format extracted info into ChecklistIdentityInfo schema (Australian context).
+        Maps extracted fields to match ChecklistIdentityInfo schema exactly.
         
         Args:
-            extracted_info: Raw extracted identity
+            extracted_info: Raw extracted identity from LLM
             
         Returns:
             Formatted identity info for Australian tax checklist generation
+            Must match ChecklistIdentityInfo fields exactly!
         """
-        # Map to checklist schema (Australian fields)
+        # Required fields (must match ChecklistIdentityInfo)
         formatted = {
-            "residency_status": extracted_info.get("residency_status"),
-            "employment_type": extracted_info.get("employment_type"),
-            "has_dependents": extracted_info.get("has_dependents", False),
-            "annual_income_range": extracted_info.get("annual_income_range"),
+            "employment_status": extracted_info.get("employment_status", "employed"),
+            "income_sources": extracted_info.get("income_sources", ["salary"]),
+            "has_dependents": extracted_info.get("has_dependents"),
+            "has_investment": extracted_info.get("has_investment"),
+            "has_rental_property": extracted_info.get("has_rental_property"),
+            "is_first_time_filer": extracted_info.get("is_first_time_filer"),
         }
         
-        # Add optional fields if present
-        optional_mapping = {
-            "num_dependents": "num_dependents",
-            "owns_home": "owns_home",
-            "has_investments": "has_investments",
-            "has_rental_property": "has_rental_property",
-            "has_foreign_income": "has_foreign_income",
-            "has_super_contributions": "has_super_contributions",
-            "has_work_expenses": "has_work_expenses",
-            "has_hecs_debt": "has_hecs_debt",
-            "has_private_health_insurance": "has_private_health_insurance",
-            "has_charitable_donations": "has_charitable_donations",
-        }
+        # Additional info fields (goes into additional_info dict)
+        additional_info = {}
+        additional_fields = [
+            "num_dependents",
+            "residency_status",
+            "state",
+            "has_hecs_debt",
+            "has_private_health_insurance",
+            "has_work_expenses",
+            "has_home_office",
+            "has_foreign_income",
+            "has_charity_donations",
+            "has_super_contributions",
+        ]
         
-        for key, mapped_key in optional_mapping.items():
-            if key in extracted_info:
-                formatted[mapped_key] = extracted_info[key]
+        for key in additional_fields:
+            if key in extracted_info and extracted_info[key] is not None:
+                additional_info[key] = extracted_info[key]
+        
+        if additional_info:
+            formatted["additional_info"] = additional_info
         
         return formatted

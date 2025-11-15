@@ -142,6 +142,13 @@ class ChecklistService:
             conversation_history
         )
         
+        # DEBUG: Log extraction result
+        print(f"🔍 FREE CHAT - Extracted from conversation:")
+        print(f"   Raw extraction: {extraction_result.get('extracted_info')}")
+        print(f"   Completion: {extraction_result.get('completion_percentage')}%")
+        print(f"   Is complete: {extraction_result.get('is_complete')}")
+        print(f"   Missing fields: {extraction_result.get('missing_fields')}")
+        
         if not extraction_result["is_complete"]:
             raise ValueError(
                 f"Insufficient information. Missing fields: {extraction_result['missing_fields']}"
@@ -151,6 +158,11 @@ class ChecklistService:
         identity_info_dict = IdentityExtractorService.format_for_checklist(
             extraction_result["extracted_info"]
         )
+        
+        # DEBUG: Log formatted identity_info
+        print(f"🔍 FREE CHAT - Formatted identity_info:")
+        print(f"   {identity_info_dict}")
+        
         identity_info = ChecklistIdentityInfo(**identity_info_dict)
         
         # Step 4: Generate and save checklist with session link

@@ -252,6 +252,105 @@ Additional: home_office, charity_donations
 
 **✅ 本次问题已解决**: 是跳转和数组索引的问题，不是 LLM 个性化的问题
 
+---
+
+## Critical Bug Found: Free Chat Mode
+
+### 🚨 Issue: Field Name Mismatch
+
+**在检查 Free Chat Mode 时发现严重问题**：
+
+`IdentityExtractorService.format_for_checklist()` 使用的字段名与 `ChecklistIdentityInfo` schema **完全不匹配**：
+
+#### ❌ 原有映射（错误）:
+```python
+# IdentityExtractorService 使用:
+{
+  "residency_status": "...",      # ❌ ChecklistIdentityInfo 没有这个字段
+  "employment_type": "...",       # ❌ 应该是 employment_status
+  "annual_income_range": "...",   # ❌ 应该是 income_sources (array)
+  "has_investments": true,        # ❌ 应该是 has_investment (单数)
+}
+```
+
+#### ✅ ChecklistIdentityInfo 实际需要:
+```python
+{
+  "employment_status": "employed",       # ✅ 不是 employment_type
+  "income_sources": ["salary"],          # ✅ 不是 annual_income_range
+  "has_dependents": false,               # ✅
+  "has_investment": false,               # ✅ 单数，不是 has_investments
+  "has_rental_property": false,          # ✅
+  "is_first_time_filer": false,          # ✅
+  "additional_info": {...}               # ✅
+}
+```
+
+### 💥 影响
+
+**Free Chat Mode 生成的所有 checklist 都使用默认值**！
+
+因为字段名对不上，`ChecklistIdentityInfo(**identity_info_dict)` 会抛出 validation error 或使用默认值，导致：
+- 所有 free chat 生成的 checklist 都一样
+- LLM 收到的 identity_info 参数全是默认值
+- 无法个性化
+
+### ✅ 修复
+
+**Backend/app/services/identity_extractor_service.py**:
+
+1. **更新 REQUIRED_FIELDS**:
+   ```python
+   REQUIRED_FIELDS = {
+       "employment_status": [...],  # 不是 employment_type
+       "income_sources": list,      # 不是 annual_income_range
+       "has_dependents": bool,
+   }
+   ```
+
+2. **更新 extraction prompt** - 要求 LLM 提取正确的字段名
+
+3. **修复 format_for_checklist()** - 正确映射到 ChecklistIdentityInfo:
+   ```python
+   formatted = {
+       "employment_status": extracted_info.get("employment_status", "employed"),
+       "income_sources": extracted_info.get("income_sources", ["salary"]),
+       "has_dependents": extracted_info.get("has_dependents"),
+       "has_investment": extracted_info.get("has_investment"),  # 单数
+       "has_rental_property": extracted_info.get("has_rental_property"),
+       "is_first_time_filer": extracted_info.get("is_first_time_filer"),
+   }
+   ```
+
+### 📝 测试 Free Chat Mode
+
+重启后端后，测试 free chat mode:
+
+1. 创建新的 chat session
+2. 告诉 AI 你的税务情况：
+   ```
+   我是自雇人士 (self-employed)，有租金收入 (rental income) 和投资收入 (investment income)，
+   有2个dependents，第一次报税
+   ```
+3. 生成 checklist
+4. 检查后端日志：
+   ```
+   🔍 FREE CHAT - Extracted from conversation:
+      Raw extraction: {'employment_status': 'self_employed', 'income_sources': [...], ...}
+   🔍 FREE CHAT - Formatted identity_info:
+      {'employment_status': 'self_employed', 'income_sources': ['self_employment', 'rental', 'investment'], ...}
+   ```
+
+### 🎯 预期结果
+
+修复后，free chat mode 应该能够：
+- 正确提取用户的税务情况
+- 生成个性化的 checklist（项目数量和内容根据复杂度变化）
+- 与 form mode 一样有效
+
+**✅ Form Mode 已验证正常**  
+**⚠️ Free Chat Mode 和 Guided Chat Mode 需要此修复才能正常工作**
+
 ## Clean Up After Debugging
 
 调试完成后，可以删除所有 `console.log` 和 `print` 语句:
