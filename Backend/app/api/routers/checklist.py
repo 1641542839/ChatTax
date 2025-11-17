@@ -16,7 +16,8 @@ from app.db.database import get_db
 from app.schemas.schemas import (
     ChecklistGenerateRequest,
     ChecklistResponse,
-    ChecklistUpdateRequest
+    ChecklistUpdateRequest,
+    ChecklistIdentityInfo
 )
 from app.services.checklist_service import ChecklistService, GenerationMode
 from app.models.user import User
@@ -79,8 +80,43 @@ async def generate_checklist(
         HTTPException: If generation fails or parameters invalid
     """
     try:
-        # Validate parameters for chat-based modes
-        if generation_mode in [GenerationMode.GUIDED_CHAT, GenerationMode.FREE_CHAT]:
+        # Handle GUIDED_CHAT mode (gets data from in-memory storage)
+        if generation_mode == GenerationMode.GUIDED_CHAT:
+            if not session_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"session_id is required for {generation_mode} mode"
+                )
+            
+            # Import guided chat storage to access collected answers
+            from app.api.routers.guided_chat import _guided_chat_storage
+            
+            # Get collected info from memory
+            collected_info = _guided_chat_storage.get(session_id)
+            if not collected_info:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="No guided chat data found. Please complete the guided questions first."
+                )
+            
+            # Convert guided data to ChecklistIdentityInfo format
+            from app.services.checklist_service import ChecklistService as CS
+            identity_info_dict = CS._format_guided_data_for_checklist(None, collected_info)
+            identity_info = ChecklistIdentityInfo(**identity_info_dict)
+            
+            # Generate checklist from guided data
+            checklist = await checklist_service.generate_and_save_checklist(
+                user_id=current_user.id,
+                identity_info=identity_info,
+                generation_mode=generation_mode,
+                session_id=None  # No database session for guided chat
+            )
+            
+            # Clean up memory storage after successful generation
+            del _guided_chat_storage[session_id]
+            
+        # Handle FREE_CHAT mode (gets data from database session)
+        elif generation_mode == GenerationMode.FREE_CHAT:
             if not session_id:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -95,6 +131,12 @@ async def generate_checklist(
             )
         else:
             # Form-based generation (Path 1)
+            if not request.identity_info:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="identity_info is required for form-based generation"
+                )
+            
             # DEBUG: Log received identity_info
             print(f"📥 Received identity_info from frontend: {request.identity_info}")
             

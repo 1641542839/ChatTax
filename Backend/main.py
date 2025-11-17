@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 
 from app.core.config import settings
 from app.db.database import Base, engine
-from app.api.routers import auth, chat, query, checklist, session
+from app.api.routers import auth, chat, query, checklist, session, guided_chat
 from app.models import user, checklist as checklist_model, chat_session  # Import models to register with Base
 
 
@@ -39,6 +39,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(auth.router, prefix="/api")
+app.include_router(guided_chat.router)  # Must be before other routers to avoid conflicts
 app.include_router(chat.router, prefix="/api")
 app.include_router(query.router, prefix="/api")
 app.include_router(checklist.router)  # Already has /api prefix in router definition

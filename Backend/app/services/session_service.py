@@ -35,7 +35,7 @@ class SessionService:
         """
         session_id = str(uuid.uuid4())
         
-        # Create welcome message to guide users
+        # Create welcome message
         welcome_message = {
             "role": "assistant",
             "content": """G'day! I'm your Australian tax assistant. I can help you understand tax rules and prepare for your tax return.
@@ -105,7 +105,7 @@ Feel free to ask any tax questions, and share your details whenever you're comfo
     def list_user_sessions(
         db: Session, 
         user_id: int, 
-        limit: int = 50,
+        limit: int = 50, 
         include_inactive: bool = False
     ) -> List[ChatSession]:
         """

@@ -27,7 +27,7 @@ class GuidedChecklistService:
     # Question templates for each phase
     QUESTIONS = {
         QuestionPhase.RESIDENCY: {
-            "question": "Let me help you generate a personalized Australian tax return checklist! First, what is your residency status for tax purposes?\n\nPlease select:\n1. Australian resident for tax purposes\n2. Foreign resident\n3. Working holiday maker\n4. Not sure",
+            "question": "what is your residency status for tax purposes?",
             "field": "residency_status",
             "options": {
                 "1": "resident",
@@ -45,7 +45,7 @@ class GuidedChecklistService:
             }
         },
         QuestionPhase.EMPLOYMENT: {
-            "question": "What is your primary employment type?\n\nPlease select:\n1. Employed (PAYG employee)\n2. Self-employed/Sole trader\n3. Contractor\n4. Retired/Pensioner\n5. Student\n6. Unemployed",
+            "question": "What is your primary employment type?",
             "field": "employment_type",
             "options": {
                 "1": "employed",
@@ -69,7 +69,7 @@ class GuidedChecklistService:
             }
         },
         QuestionPhase.DEPENDENTS: {
-            "question": "Do you have any dependents (such as children)?\n\nPlease answer: Yes / No",
+            "question": "Do you have any dependents (such as children)?",
             "field": "has_dependents",
             "options": {
                 "yes": True,
@@ -85,7 +85,7 @@ class GuidedChecklistService:
             }
         },
         QuestionPhase.INCOME: {
-            "question": "What is your approximate annual income for the 2023-24 financial year?\n\n1. Under $18,200 (tax-free threshold)\n2. $18,200 - $45,000\n3. $45,000 - $120,000\n4. $120,000 - $180,000\n5. Over $180,000",
+            "question": "What is your approximate annual income for the 2023-24 financial year?",
             "field": "annual_income_range",
             "options": {
                 "1": "under_18200",
@@ -109,12 +109,14 @@ class GuidedChecklistService:
             }
         },
         QuestionPhase.INVESTMENTS: {
-            "question": "Do you have any investments? (e.g., shares, managed funds, cryptocurrency)",
+            "question": "Do you have any investments (shares, managed funds, cryptocurrency) OR did you sell any assets this year?",
             "field": "has_investments",
             "options": {
                 "yes": True,
                 "y": True,
                 "have": True,
+                "sold": True,
+                "sell": True,
                 "no": False,
                 "n": False,
                 "none": False
@@ -133,7 +135,7 @@ class GuidedChecklistService:
             }
         },
         QuestionPhase.ADDITIONAL: {
-            "question": "Final questions! Do you have any of the following? (You can select multiple, separated by commas)\n\n1. Foreign income\n2. Superannuation contributions (personal)\n3. Work-related expenses (home office, car, etc.)\n4. Private health insurance\n5. Education expenses (HECS/HELP debt)\n6. Donations to charities\n\nIf none apply, please answer 'none'.",
+            "question": "Final questions! Do you have any of the following? (You can select multiple)",
             "field": "additional_items",
             "multi_select": True,
             "options": {
@@ -160,7 +162,14 @@ class GuidedChecklistService:
                 "6": "has_donations",
                 "charity": "has_donations",
                 "donations": "has_donations",
-                "dgr": "has_donations"
+                "dgr": "has_donations",
+                "7": "has_spouse",
+                "married": "has_spouse",
+                "marriage": "has_spouse",
+                "spouse": "has_spouse",
+                "partner": "has_spouse",
+                "de facto": "has_spouse",
+                "relationship": "has_spouse"
             }
         }
     }
@@ -225,6 +234,20 @@ class GuidedChecklistService:
                 }
             
             next_phase = GuidedChecklistService.PHASE_ORDER[next_index]
+            
+            # If next phase is COMPLETE, return completion message
+            if next_phase == QuestionPhase.COMPLETE:
+                return {
+                    "phase": QuestionPhase.COMPLETE,
+                    "question": "✅ Great! I've collected enough information. I can now generate a personalized tax return checklist for you!",
+                    "progress": {
+                        "current": len(GuidedChecklistService.PHASE_ORDER) - 1,
+                        "total": len(GuidedChecklistService.PHASE_ORDER) - 1,
+                        "percentage": 100
+                    },
+                    "is_complete": True
+                }
+            
             question_data = GuidedChecklistService.QUESTIONS[next_phase]
             
             return {
@@ -243,13 +266,13 @@ class GuidedChecklistService:
             return GuidedChecklistService.get_initial_question()
     
     @staticmethod
-    def parse_answer(phase: str, answer: str, collected_info: Dict) -> Dict:
+    def parse_answer(phase: str, answer, collected_info: Dict) -> Dict:
         """
         Parse user's answer and extract structured data.
         
         Args:
             phase: Current question phase
-            answer: User's answer text
+            answer: User's answer (can be str, bool, list, or any type)
             collected_info: Existing collected information
             
         Returns:
@@ -257,7 +280,30 @@ class GuidedChecklistService:
         """
         try:
             question_data = GuidedChecklistService.QUESTIONS[QuestionPhase(phase)]
-            answer_lower = answer.lower().strip()
+            
+            # Handle different answer types
+            if isinstance(answer, bool):
+                # Boolean answer - return as is
+                return {
+                    "parsed_value": answer,
+                    "field": question_data["field"],
+                    "needs_follow_up": False,
+                    "follow_up_question": None
+                }
+            
+            if isinstance(answer, list):
+                # Multi-select answer
+                selected_items = {item: True for item in answer}
+                return {
+                    "parsed_value": selected_items,
+                    "field": question_data["field"],
+                    "needs_follow_up": False,
+                    "follow_up_question": None
+                }
+            
+            # Convert to string for text processing
+            answer_str = str(answer)
+            answer_lower = answer_str.lower().strip()
             
             result = {
                 "parsed_value": None,

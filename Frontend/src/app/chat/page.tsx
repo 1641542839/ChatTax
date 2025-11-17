@@ -5,15 +5,8 @@ import { SessionProvider } from '@/contexts/SessionContext'
 import SessionListSidebar from '@/components/chat/SessionListSidebar'
 import SessionChatWindow from '@/components/chat/SessionChatWindow'
 import TaxInfoCollectionWidget from '@/components/chat/TaxInfoCollectionWidget'
-import { sessionStorage } from '@/services/sessionService'
 
 export default function ChatPage() {
-  // Clear session on page load - start with empty chat window
-  useEffect(() => {
-    console.log('[ChatPage] Clearing cached session for fresh start');
-    sessionStorage.clearAll();
-  }, []);
-
   // Debug: Track page mount/unmount
   useEffect(() => {
     console.log('[ChatPage] Component mounted');

@@ -115,7 +115,8 @@ class ChecklistService:
         """
         Generate checklist from conversation history (Path 2 & 3).
         
-        Follows Single Responsibility - delegates extraction to IdentityExtractorService.
+        Path 2 (GUIDED_CHAT): Reads from session.extracted_identity (structured Q&A)
+        Path 3 (FREE_CHAT): Uses LLM to extract from conversation history
         
         Args:
             user_id: ID of the user
@@ -128,44 +129,62 @@ class ChecklistService:
         Raises:
             ValueError: If session not found or insufficient information
         """
-        # Step 1: Get session and conversation history
+        import json
+        
+        # Step 1: Get session
         session = SessionService.get_session(self.db, session_id, user_id)
         if not session:
             raise ValueError("Session not found")
         
-        conversation_history = session.conversation_history or []
-        if not conversation_history:
-            raise ValueError("No conversation history found")
-        
-        # Step 2: Extract identity info from conversation
-        extraction_result = IdentityExtractorService.extract_identity_from_conversation(
-            conversation_history
-        )
-        
-        # DEBUG: Log extraction result
-        print(f"🔍 FREE CHAT - Extracted from conversation:")
-        print(f"   Raw extraction: {extraction_result.get('extracted_info')}")
-        print(f"   Completion: {extraction_result.get('completion_percentage')}%")
-        print(f"   Is complete: {extraction_result.get('is_complete')}")
-        print(f"   Missing fields: {extraction_result.get('missing_fields')}")
-        
-        if not extraction_result["is_complete"]:
-            raise ValueError(
-                f"Insufficient information. Missing fields: {extraction_result['missing_fields']}"
+        # Step 2: Extract identity info based on mode
+        if generation_mode == GenerationMode.GUIDED_CHAT:
+            # Path 2: Read from session.extracted_identity (already structured)
+            if not session.extracted_identity:
+                raise ValueError("No guided chat data found in session")
+            
+            # Parse extracted_identity JSON
+            identity_data = json.loads(session.extracted_identity) if isinstance(session.extracted_identity, str) else session.extracted_identity
+            
+            # DEBUG: Log guided chat data
+            print(f"🔍 GUIDED CHAT - Data from session.extracted_identity:")
+            print(f"   {identity_data}")
+            
+            # Convert to ChecklistIdentityInfo format
+            identity_info_dict = self._format_guided_data_for_checklist(identity_data)
+            
+        else:
+            # Path 3: FREE_CHAT - Extract from conversation using LLM
+            conversation_history = session.conversation_history or []
+            if not conversation_history:
+                raise ValueError("No conversation history found")
+            
+            extraction_result = IdentityExtractorService.extract_identity_from_conversation(
+                conversation_history
+            )
+            
+            # DEBUG: Log extraction result
+            print(f"🔍 FREE CHAT - Extracted from conversation:")
+            print(f"   Raw extraction: {extraction_result.get('extracted_info')}")
+            print(f"   Completion: {extraction_result.get('completion_percentage')}%")
+            print(f"   Is complete: {extraction_result.get('is_complete')}")
+            print(f"   Missing fields: {extraction_result.get('missing_fields')}")
+            
+            if not extraction_result["is_complete"]:
+                raise ValueError(
+                    f"Insufficient information. Missing fields: {extraction_result['missing_fields']}"
+                )
+            
+            identity_info_dict = IdentityExtractorService.format_for_checklist(
+                extraction_result["extracted_info"]
             )
         
-        # Step 3: Format for checklist generation
-        identity_info_dict = IdentityExtractorService.format_for_checklist(
-            extraction_result["extracted_info"]
-        )
-        
         # DEBUG: Log formatted identity_info
-        print(f"🔍 FREE CHAT - Formatted identity_info:")
+        print(f"🔍 {generation_mode.upper()} - Formatted identity_info:")
         print(f"   {identity_info_dict}")
         
         identity_info = ChecklistIdentityInfo(**identity_info_dict)
         
-        # Step 4: Generate and save checklist with session link
+        # Step 3: Generate and save checklist with session link
         return await self.generate_and_save_checklist(
             user_id=user_id,
             identity_info=identity_info,
@@ -283,6 +302,84 @@ class ChecklistService:
         self.db.delete(checklist)
         self.db.commit()
         return True
+    
+    def _format_guided_data_for_checklist(self, guided_data: Dict) -> Dict:
+        """
+        Convert guided chat data to ChecklistIdentityInfo format.
+        
+        Guided data structure (from 8 questions):
+        {
+            "residency_status": "resident" | "foreign_resident" | "working_holiday_maker",
+            "employment_type": "employed" | "self_employed" | "contractor" | "retired" | "student" | "unemployed",
+            "has_dependents": bool,
+            "num_dependents": int (optional),
+            "annual_income_range": "under_18200" | "18200-45000" | "45000-120000" | "120000-180000" | "over_180000",
+            "owns_home": "yes" | "no" | "renting",
+            "has_capital_gains": bool,
+            "has_spouse": bool,
+            "has_investment": bool (checkbox),
+            "has_rental_property": bool (checkbox),
+            "has_foreign_income": bool (checkbox),
+            "has_hecs_help": bool (checkbox),
+            "has_private_health": bool (checkbox)
+        }
+        
+        Args:
+            guided_data: Data collected from guided conversation
+            
+        Returns:
+            Dictionary matching ChecklistIdentityInfo schema
+        """
+        # Map employment_type to employment_status
+        employment_status = guided_data.get("employment_type", "employed")
+        
+        # Build income_sources list based on collected info
+        income_sources = ["salary"]  # Default for employed
+        
+        if employment_status in ["self_employed", "contractor"]:
+            income_sources = ["business"]
+        elif employment_status == "retired":
+            income_sources = ["pension", "superannuation"]
+        elif employment_status == "student":
+            income_sources = ["other"]
+        elif employment_status == "unemployed":
+            income_sources = ["government_payment"]
+        
+        # Add additional income sources from checkboxes
+        if guided_data.get("has_investments"):  # Note: plural 'investments'
+            income_sources.append("investment")
+        if guided_data.get("has_rental_property"):
+            income_sources.append("rental")
+        if guided_data.get("has_foreign_income"):
+            income_sources.append("foreign_income")
+        
+        # Build additional_info
+        additional_info = {
+            "residency_status": guided_data.get("residency_status", "resident"),
+            "annual_income_range": guided_data.get("annual_income_range"),
+            "owns_home": guided_data.get("owns_home") == True,  # Convert boolean
+            "has_capital_gains": guided_data.get("has_capital_gains", False),
+            "has_spouse": guided_data.get("has_spouse", False),
+            "has_hecs_help": guided_data.get("has_hecs_help", False),
+            "has_private_health": guided_data.get("has_private_health", False),
+            "has_foreign_income": guided_data.get("has_foreign_income", False),
+            "has_work_expenses": guided_data.get("has_work_expenses", False),
+            "has_donations": guided_data.get("has_donations", False),
+            "has_super_contributions": guided_data.get("has_super_contributions", False)
+        }
+        
+        if guided_data.get("num_dependents"):
+            additional_info["num_dependents"] = guided_data["num_dependents"]
+        
+        return {
+            "employment_status": employment_status,
+            "income_sources": income_sources,
+            "has_dependents": guided_data.get("has_dependents"),
+            "has_investment": guided_data.get("has_investments"),  # Map plural to singular
+            "has_rental_property": guided_data.get("has_rental_property"),
+            "is_first_time_filer": None,  # Not asked in guided mode
+            "additional_info": additional_info
+        }
     
     def _to_response(self, checklist: Checklist) -> ChecklistResponse:
         """

@@ -191,8 +191,11 @@ class ChecklistGenerateRequest(BaseModel):
     """
     Request schema for generating a personalized tax checklist.
     Uses authenticated user from JWT token (user_id no longer required in request body).
+    
+    Note: identity_info is optional for chat-based modes (guided_chat, free_chat)
+    where the backend extracts it from the session.
     """
-    identity_info: ChecklistIdentityInfo = Field(..., description="User's identity and tax situation information")
+    identity_info: Optional[ChecklistIdentityInfo] = Field(default=None, description="User's identity and tax situation information. Optional for chat-based modes.")
 
     class Config:
         json_schema_extra = {
